@@ -225,15 +225,36 @@ def project_go_src_command(command, conf, apps):
     print('go %s %s' % (command, app))
     os.system('go %s %s' % (command, app))
 
+def project_go_build(conf, args=None):
+  """
+  @TODO: build by config default command
+  """
+  return project_go_src_command('build', conf, args)
+
+def project_go_deps_get(conf, args=None):
+  """
+  Get and install dependencies or custom install
+  @param conf
+  @param args[] or None
+  """
+  if args is not None and len(args)>0:
+    return project_go_src_command('get', conf, args)
+  if isinstance(conf.DEPS, (list, tuple)):
+    for dep in conf.DEPS:
+      print('go get %s' % dep)
+      os.system('go get %s' % dep)
+
 def process_action(action, conf, args):
   if 'init' == action:
     project_init(os.getcwd(), args[0])
   elif 'deps' == action:
     conf.print_depending_list()
+  elif action in ['depinstall', 'get']:
+    project_go_deps_get(conf, args)
   elif 'list' == action:
     conf.print_application_list()
   elif 'build' == action:
-    project_go_src_command('build', conf, args)
+    project_go_build(conf, args)
   elif 'install' == action:
     project_go_src_command('install', conf, args)
   elif 'clean' == action:
