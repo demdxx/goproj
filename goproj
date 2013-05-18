@@ -175,7 +175,7 @@ PROJECT_STRUCTURE = [
 PROJECT_FILE = """
 {
   "project": "${projectname}",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "deps": [
     # ...
   ],
@@ -190,17 +190,20 @@ PROJECT_FILE = """
 }
 """
 
-def project_init(dirpath, projectname):
+def project_init(dirpath, projectname, subdir=None):
   if not projectname or  len(projectname)<1:
     print('Enter project name')
     return None
 
+  if subdir is None or len(subdir)<1:
+    subdir = projectname
+
   for d in PROJECT_STRUCTURE:
-    directory = '%s/%s/%s' % (dirpath, projectname, d.replace('${projectname}', projectname).lower())
+    directory = '%s/%s/%s' % (dirpath, subdir, d.replace('${projectname}', projectname).lower())
     if not os.path.exists(directory):
       os.makedirs(directory)
 
-  goproj = open("%s/%s/.goproj" % (dirpath, projectname), "w")
+  goproj = open("%s/%s/.goproj" % (dirpath, subdir), "w")
   goproj.write(PROJECT_FILE.replace('${projectname}', projectname))
   goproj.close()
 
@@ -246,7 +249,9 @@ def project_go_deps_get(conf, args=None):
 
 def process_action(action, conf, args):
   if 'init' == action:
-    project_init(os.getcwd(), args[0])
+    subdir = args[0] if len(args)>1 else None
+    projectname = args[1] if len(args)>1 else args[0]
+    project_init(dirpath=os.getcwd(), projectname=projectname, subdir=subdir)
   elif 'deps' == action:
     conf.print_depending_list()
   elif action in ['depinstall', 'get']:
@@ -288,7 +293,7 @@ def process_action(action, conf, args):
 ###
 
 HELP = {
-  'init'    : 'create project structure',
+  'init'    : 'create project structure. goptoj init [folder] <name>',
   'deps'    : 'list of dependencies',
   'list'    : 'list packages',
   'build'   : 'compile packages and dependencies',
