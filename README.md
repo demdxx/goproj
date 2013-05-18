@@ -15,6 +15,33 @@ cd goproj
 
 sudo cp goproj /usr/local/bin/
 ```
+
+## Project file *.goproj*
+
+```python
+{
+  "project": "${projectname}",
+  "version": "0.0.0",
+
+  "deps": [
+    # ...
+  ],
+
+  "apps": [
+    # default all from src
+  ],
+
+  # @TODO: HOOKS
+  # "init": [] or "script/path",
+  # "finish": [] or "script/path",
+  # "surcess": [] or "script/path",
+  # "failure": [] or "script/path",
+
+  # @TODO
+  # "build": ["file/path", ...] or "file/path"
+}
+```
+
 ## Using
 
 All commands are needed packages automatically, so this option can be omitted. Start any commands can be from any podkotalaga project, all settings are set automatically.
