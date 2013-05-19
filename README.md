@@ -56,3 +56,8 @@ goproj init <project name>
 ```sh
 goproj install or goproj install <package without src>
 ```
+
+* Testing
+```sh
+goproj test [package, ...] [-flags]
+```

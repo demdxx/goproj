@@ -162,6 +162,25 @@ class Config:
     os.environ['PATH'] = '%s;%s/bin' % (os.environ['PATH'], self.DIRNAME)
 
 
+def command_line_prepare(args):
+  _flags = []
+  _strings = []
+  if not args:
+    return _strings, _flags
+  add_next = False
+  for a in args:
+    if add_next:
+      _flags.append(a)
+      add_next = False
+    elif a[:2] == '--':
+      add_next = True
+      _flags.append(a)
+    elif a[0] == '-':
+      _flags.append(a)
+    else:
+      _strings.append(a)
+  return _strings, _flags
+
 ###
 # Execution methods
 ###
@@ -214,19 +233,24 @@ def project_go_command(command, conf, args=None):
 
   conf.set_env()
   if not args: args = []
-  print('go %s %s' % (command, ' '.join(args)))
-  os.system('go %s %s' % (command, ' '.join(args)))
+  cmd = 'go %s %s' % (command, ' '.join(args))
+  print(cmd)
+  os.system(cmd)
 
-def project_go_src_command(command, conf, apps):
+def project_go_src_command(command, conf, apps, args=None):
   if not conf:
     print("Project file \".goproj\" not found")
     return
 
   conf.set_env()
 
+  if not args:
+    args = []
+
   for app in apps or conf.apps_list():
-    print('go %s %s' % (command, app))
-    os.system('go %s %s' % (command, app))
+    cmd = 'go %s %s %s' % (command, app, ' '.join(args))
+    print(cmd)
+    os.system(cmd)
 
 def project_go_build(conf, args=None):
   """
@@ -244,8 +268,18 @@ def project_go_deps_get(conf, args=None):
     return project_go_src_command('get', conf, args)
   if isinstance(conf.DEPS, (list, tuple)):
     for dep in conf.DEPS:
-      print('go get %s' % dep)
-      os.system('go get %s' % dep)
+      cmd = 'go get %s' % dep
+      print(cmd)
+      os.system(cmd)
+
+def project_go_test(conf, args=None):
+  if not args:
+    args = ['-v']
+
+  apps, flags = command_line_prepare(args)
+  if len(apps)<1:
+    apps = conf.apps_list()
+  return project_go_src_command('test', conf, apps, flags)
 
 def process_action(action, conf, args):
   if 'init' == action:
@@ -271,7 +305,7 @@ def process_action(action, conf, args):
   elif 'fix' == action:
     project_go_src_command('fix', conf, args)
   elif 'test' == action:
-    project_go_src_command('test', conf, args)
+    project_go_test(conf, args)
   elif 'vet' == action:
     project_go_src_command('vet', conf, args)
   elif 'doc' == action:
