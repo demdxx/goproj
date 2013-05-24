@@ -55,6 +55,8 @@ class Config:
     self.GOBIN  = None
     self.DIRNAME = None
     self.CONFIGPATH = None
+    self.GOOS = None
+    self.GOARCH = None
     self.DEPS = []
     self.APPS = []
 
@@ -83,6 +85,10 @@ class Config:
 
     conf.DIRNAME = dirname
     conf.CONFIGPATH = filepath
+    if jdata.has_key('os') and jdata['os']:
+      conf.GOOS = jdata['os']
+    if jdata.has_key('arch') and jdata['arch']:
+      conf.GOARCH = jdata['arch']
     conf.inited = True
 
     return conf
@@ -160,6 +166,10 @@ class Config:
       exit(-1)
     os.environ['GOPATH'] = self.DIRNAME
     os.environ['PATH'] = '%s;%s/bin' % (os.environ['PATH'], self.DIRNAME)
+    if self.GOOS:
+      os.environ['GOOS'] = self.GOOS
+    if self.GOARCH:
+      os.environ['GOARCH'] = self.GOARCH
 
 
 def command_line_prepare(args):
@@ -195,6 +205,8 @@ PROJECT_FILE = """
 {
   "project": "${projectname}",
   "version": "0.0.0",
+  # "os": None, # Current
+  # "arch": None, # Current
   "deps": [
     # ...
   ],
