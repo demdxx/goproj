@@ -30,7 +30,7 @@ try:
 except ImportError:
   import simplejson as json
 
-__version__ = '0.0.1alpha'
+__version__ = '0.0.2alpha'
 __autor__ = 'Dmitry Ponomarev <demdxx@gmail.com>'
 __year__ = '2013'
 __license__ = 'MIT'
@@ -52,13 +52,12 @@ class Config:
   """
   def __init__(self):
     self.inited = False
-    self.GOBIN  = None
     self.DIRNAME = None
     self.CONFIGPATH = None
-    self.GOOS = None
-    self.GOARCH = None
     self.DEPS = []
     self.APPS = []
+    self.BUILD = []
+    self.ENVIRON = {}
 
   def save(self):
     pass
@@ -82,13 +81,13 @@ class Config:
 
     conf.DEPS = key_as_array(jdata, ['deps', 'dependings', 'dep', 'depending'])
     conf.APPS = key_as_array(jdata, ['apps', 'applications', 'app', 'application'])
+    conf.BUILD = jdata.get('build', None)
 
     conf.DIRNAME = dirname
     conf.CONFIGPATH = filepath
-    if jdata.has_key('os') and jdata['os']:
-      conf.GOOS = jdata['os']
-    if jdata.has_key('arch') and jdata['arch']:
-      conf.GOARCH = jdata['arch']
+    self.ENVIRON['GOOS'] = jdata.get('os', None)
+    self.ENVIRON['GOARCH'] = jdata.get('arch', None)
+    self.ENVIRON['GOARM'] = jdata.get('arm', None)
     conf.inited = True
 
     return conf
@@ -164,12 +163,18 @@ class Config:
     if not self.DIRNAME:
       print("Project file \".goproj\" not found")
       exit(-1)
+
     os.environ['GOPATH'] = self.DIRNAME
     os.environ['PATH'] = '%s;%s/bin' % (os.environ['PATH'], self.DIRNAME)
-    if self.GOOS:
-      os.environ['GOOS'] = self.GOOS
-    if self.GOARCH:
-      os.environ['GOARCH'] = self.GOARCH
+
+    if self.ENVIRON:
+      for k in self.ENVIRON:
+        v = self.ENVIRON[k]
+        if v:
+          os.environ[k] = v
+
+    if self.ENVIRON.get('GOARM', None) and not self.ENVIRON.get('GOARCH', None):
+      os.environ['GOARCH'] = 'arm'
 
 
 def command_line_prepare(args):
@@ -205,8 +210,9 @@ PROJECT_FILE = """
 {
   "project": "${projectname}",
   "version": "0.0.0",
-  # "os": None, # Current
-  # "arch": None, # Current
+  # "os": None, # Default
+  # "arch": None, # Default
+  # "arm": Nine, # Default
   "deps": [
     # ...
   ],
@@ -265,9 +271,8 @@ def project_go_src_command(command, conf, apps, args=None):
     os.system(cmd)
 
 def project_go_build(conf, args=None):
-  """
-  @TODO: build by config default command
-  """
+  if not args or len(args)<1:
+    args = conf.BUILD
   return project_go_src_command('build', conf, args)
 
 def project_go_deps_get(conf, args=None):
