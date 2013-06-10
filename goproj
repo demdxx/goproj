@@ -23,7 +23,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 """
 
-import os, sys
+import os, sys, subprocess
 
 try:
   import json
@@ -34,6 +34,16 @@ __version__ = '0.0.2alpha'
 __autor__ = 'Dmitry Ponomarev <demdxx@gmail.com>'
 __year__ = '2013'
 __license__ = 'MIT'
+
+
+GOPATHS = [
+  '~/bin/go'
+ ,'~/go/bin/go'
+ ,'/usr/local/bin/go'
+ ,'/usr/local/go/bin/go'
+ ,'/usr/local/opt/go/bin/go'
+ ,'/usr/bin/go'
+]
 
 
 def key_as_array(dictionary, keys):
@@ -58,6 +68,7 @@ class Config:
     self.APPS = []
     self.BUILD = []
     self.ENVIRON = {}
+    self.GO = 'go'
 
   def save(self):
     pass
@@ -85,9 +96,9 @@ class Config:
 
     conf.DIRNAME = dirname
     conf.CONFIGPATH = filepath
-    self.ENVIRON['GOOS'] = jdata.get('os', None)
-    self.ENVIRON['GOARCH'] = jdata.get('arch', None)
-    self.ENVIRON['GOARM'] = jdata.get('arm', None)
+    conf.ENVIRON['GOOS'] = jdata.get('os', None)
+    conf.ENVIRON['GOARCH'] = jdata.get('arch', None)
+    conf.ENVIRON['GOARM'] = jdata.get('arm', None)
     conf.inited = True
 
     return conf
@@ -163,6 +174,15 @@ class Config:
     if not self.DIRNAME:
       print("Project file \".goproj\" not found")
       exit(-1)
+
+    self.GO = subprocess.Popen("which go", shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
+    if not self.GO:
+      for _go in GOPATHS:
+        if os.path.isfile(_go) or os.path.islink(_go):
+          self.GO = _go
+          break
+    if not self.GO:
+      self.GO = 'go'
 
     os.environ['GOPATH'] = self.DIRNAME
     os.environ['PATH'] = '%s;%s/bin' % (os.environ['PATH'], self.DIRNAME)
@@ -251,7 +271,7 @@ def project_go_command(command, conf, args=None):
 
   conf.set_env()
   if not args: args = []
-  cmd = 'go %s %s' % (command, ' '.join(args))
+  cmd = '%s %s %s' % (conf.GO, command, ' '.join(args))
   print(cmd)
   os.system(cmd)
 
@@ -266,7 +286,7 @@ def project_go_src_command(command, conf, apps, args=None):
     args = []
 
   for app in apps or conf.apps_list():
-    cmd = 'go %s %s %s' % (command, app, ' '.join(args))
+    cmd = '%s %s %s %s' % (conf.GO, command, app, ' '.join(args))
     print(cmd)
     os.system(cmd)
 
@@ -285,7 +305,7 @@ def project_go_deps_get(conf, args=None):
     return project_go_src_command('get', conf, args)
   if isinstance(conf.DEPS, (list, tuple)):
     for dep in conf.DEPS:
-      cmd = 'go get %s' % dep
+      cmd = '%s get %s' % (conf.GO, dep)
       print(cmd)
       os.system(cmd)
 
