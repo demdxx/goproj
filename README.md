@@ -19,26 +19,26 @@ sudo cp goproj /usr/local/bin/
 ## Project file *.goproj*
 
 ```python
+# Example revel web project application
 {
-  "project": "${projectname}",
-  "version": "0.0.0",
+  "project": "{projectname}",
+  "version": "0.0.1",
 
-  "deps": [
-    # ...
-  ],
+  "deps": {
+    "github.com/robfig/revel": {
+      "build": "{go} build -o revel {app}/revel", # Run after get
+    },
+  },
 
   "apps": [
     # default all from src
+    "{projectname}/app"
   ],
 
   # @TODO: HOOKS
-  # "init": [] or "script/path",
-  # "finish": [] or "script/path",
-  # "surcess": [] or "script/path",
-  # "failure": [] or "script/path",
+  # "hooks": {"command": {"before": ["script/path", ...]}, "after": ["script/path", ...]},
 
-  # @TODO
-  # "build": ["file/path", ...] or "file/path"
+  # "build": ["arg1", "arg2", ...]
 }
 ```
 

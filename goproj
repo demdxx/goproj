@@ -30,7 +30,7 @@ try:
 except ImportError:
   import simplejson as json
 
-__version__ = '0.0.2alpha'
+__version__ = '0.0.3beta'
 __autor__ = 'Dmitry Ponomarev <demdxx@gmail.com>'
 __year__ = '2013'
 __license__ = 'MIT'
@@ -90,8 +90,8 @@ class Config:
     conf = klass()
     data = None # Release memory
 
-    conf.DEPS = key_as_array(jdata, ['deps', 'dependings', 'dep', 'depending'])
-    conf.APPS = key_as_array(jdata, ['apps', 'applications', 'app', 'application'])
+    conf.DEPS = klass.prepare_apps(key_as_array(jdata, ['deps', 'dependings', 'dep', 'depending']))
+    conf.APPS = klass.prepare_apps(key_as_array(jdata, ['apps', 'applications', 'app', 'application']))
     conf.BUILD = jdata.get('build', None)
 
     conf.DIRNAME = dirname
@@ -102,6 +102,18 @@ class Config:
     conf.inited = True
 
     return conf
+
+  @staticmethod
+  def prepare_apps(apps):
+    if not apps or isinstance(apps, dict):
+      return apps
+    arr = {}
+    for v in apps:
+      if isinstance(v, basestring):
+        arr[v] = {}
+      elif isinstance(v, dict):
+        arr.update(v)
+    return arr
 
   @classmethod
   def find_project_file(klass, dir, filenames=None):
@@ -140,7 +152,7 @@ class Config:
       if f.endswith('.go') and os.path.isfile('%s/%s/%s' % (dir, sdir, f)):
         return sdir
 
-    result = []
+    result = {}
     for f in files:
       spath = '%s/%s' % (sdir, f) if sdir and len(sdir)>0 else f
       dpath = '%s/%s' % (dir, spath)
@@ -148,9 +160,9 @@ class Config:
         r = klass.__apps_find_in(dir, spath)
         if r and len(r)>0:
           if isinstance(r, basestring):
-            result.append(r)
+            result[r] = {}
           else:
-            result += r
+            result.update(r)
     return result
 
   def apps_list(self):
@@ -222,28 +234,38 @@ def command_line_prepare(args):
 
 PROJECT_STRUCTURE = [
   'bin',
-  'src/${projectname}',
+  'src/{projectname}',
   'pkg'
 ]
 
-PROJECT_FILE = """
-{
-  "project": "${projectname}",
-  "version": "0.0.0",
+PROJECT_FILE = """{
+  "project": "{projectname}",
+  "version": "0.0.1",
   # "os": None, # Default
   # "arch": None, # Default
-  # "arm": Nine, # Default
+  # "arm": None, # Default
   "deps": [
     # ...
   ],
+  # "deps": {
+  #   # "github.com/robfig/revel": {
+  #   #   "build": "{go} build -o revel {app}/revel",
+  #   # },
+  # },
+
   "apps": [
     # default all from src
+    "{projectname}",
   ],
-  # HOOKS
-  # "init": [] or "script/path",
-  # "finish": [] or "script/path",
-  # "surcess": [] or "script/path",
-  # "failure": [] or "script/path",
+
+  # "apps": {
+  #   "{projectname}": {
+  #     # Custom config
+  #   }
+  # },
+
+  # @TODO: HOOKS
+  # "hooks": {"command": {"before": ["script/path", ...]}, "after": ["script/path", ...]},
 }
 """
 
@@ -252,46 +274,56 @@ def project_init(dirpath, projectname, subdir=None):
     print('Enter project name')
     return None
 
-  if subdir is None or len(subdir)<1:
+  if subdir is None or len(subdir) < 1:
     subdir = projectname
 
   for d in PROJECT_STRUCTURE:
-    directory = '%s/%s/%s' % (dirpath, subdir, d.replace('${projectname}', projectname).lower())
+    directory = '%s/%s/%s' % (dirpath, subdir, d.format(projectname=projectname).lower())
     if not os.path.exists(directory):
       os.makedirs(directory)
 
   goproj = open("%s/%s/.goproj" % (dirpath, subdir), "w")
-  goproj.write(PROJECT_FILE.replace('${projectname}', projectname))
+  goproj.write(PROJECT_FILE.format(projectname=projectname))
   goproj.close()
 
-def project_go_command(command, conf, args=None):
+def project_init_env(conf):
   if not conf:
     print("Project file \".goproj\" not found")
-    return
-
+    raise
   conf.set_env()
+
+def project_go_command(command, conf, args=None):
+  project_init_env(conf)
   if not args: args = []
   cmd = '%s %s %s' % (conf.GO, command, ' '.join(args))
   print(cmd)
   os.system(cmd)
 
 def project_go_src_command(command, conf, apps, args=None):
-  if not conf:
-    print("Project file \".goproj\" not found")
-    return
-
-  conf.set_env()
+  project_init_env(conf)
 
   if not args:
     args = []
 
-  for app in apps or conf.apps_list():
-    cmd = '%s %s %s %s' % (conf.GO, command, app, ' '.join(args))
-    print(cmd)
-    os.system(cmd)
+  if not apps:
+    apps = conf.apps_list()
+
+  if isinstance(apps, dict):
+    for app, params in apps.items():
+      if params and command in params:
+        cmd = params[command].format(go=conf.GO, cmd=command, app=app)
+      else:
+        cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
+      print(cmd)
+      os.system(cmd)
+  else:
+    for app in apps:
+      cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
+      print(cmd)
+      os.system(cmd)
 
 def project_go_build(conf, args=None):
-  if not args or len(args)<1:
+  if not args or len(args) < 1:
     args = conf.BUILD
   return project_go_src_command('build', conf, args)
 
@@ -303,25 +335,31 @@ def project_go_deps_get(conf, args=None):
   """
   if args is not None and len(args)>0:
     return project_go_src_command('get', conf, args)
-  if isinstance(conf.DEPS, (list, tuple)):
-    for dep in conf.DEPS:
+  if isinstance(conf.DEPS, dict):
+    project_init_env(conf)
+    for dep, params in conf.DEPS.items():
       cmd = '%s get %s' % (conf.GO, dep)
       print(cmd)
       os.system(cmd)
+      # Build after get
+      if params and 'build' in params:
+        cmd = params['build'].format(go=conf.GO, cmd='build', app=dep)
+        print(cmd)
+        os.system(cmd)
 
 def project_go_test(conf, args=None):
   if not args:
     args = ['-v']
 
   apps, flags = command_line_prepare(args)
-  if len(apps)<1:
+  if len(apps) < 1:
     apps = conf.apps_list()
   return project_go_src_command('test', conf, apps, flags)
 
 def process_action(action, conf, args):
   if 'init' == action:
-    subdir = args[0] if len(args)>1 else None
-    projectname = args[1] if len(args)>1 else args[0]
+    subdir = args[0] if len(args) > 1 else None
+    projectname = args[1] if len(args) > 1 else args[0]
     project_init(dirpath=os.getcwd(), projectname=projectname, subdir=subdir)
   elif 'deps' == action:
     conf.print_depending_list()
