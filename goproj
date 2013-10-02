@@ -99,6 +99,14 @@ class Config:
     conf.ENVIRON['GOOS'] = jdata.get('os', None)
     conf.ENVIRON['GOARCH'] = jdata.get('arch', None)
     conf.ENVIRON['GOARM'] = jdata.get('arm', None)
+
+    # Custom enviroment
+    env = jdata.get('env', None)
+    if env and isinstance(env, dict):
+      conf.ENVIRON.update(env)
+    else:
+      conf.ENVIRON['ENV'] = env
+
     conf.inited = True
 
     return conf
@@ -201,12 +209,18 @@ class Config:
 
     if self.ENVIRON:
       for k in self.ENVIRON:
-        v = self.ENVIRON[k]
-        if v:
-          os.environ[k] = v
+        if k != 'ENV':
+          v = self.ENVIRON[k]
+          if v:
+            os.environ[k] = v
 
-    if self.ENVIRON.get('GOARM', None) and not self.ENVIRON.get('GOARCH', None):
-      os.environ['GOARCH'] = 'arm'
+      if self.ENVIRON.get('GOARM', None) and not self.ENVIRON.get('GOARCH', None):
+        os.environ['GOARCH'] = 'arm'
+
+      if 'ENV' in self.ENVIRON:
+        for s in self.ENVIRON:
+          if s:
+            os.system(s)
 
 
 def command_line_prepare(args):
@@ -283,7 +297,7 @@ def project_init(dirpath, projectname, subdir=None):
       os.makedirs(directory)
 
   goproj = open("%s/%s/.goproj" % (dirpath, subdir), "w")
-  goproj.write(PROJECT_FILE.format(projectname=projectname))
+  goproj.write(PROJECT_FILE.replace('{projectname}', projectname))
   goproj.close()
 
 def project_init_env(conf):
