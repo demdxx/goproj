@@ -69,6 +69,7 @@ class Config:
     self.BUILD = []
     self.ENVIRON = {}
     self.GO = 'go'
+    self.CONF = {}
 
   def save(self):
     pass
@@ -90,6 +91,7 @@ class Config:
     conf = klass()
     data = None # Release memory
 
+    conf.CONF = jdata
     conf.DEPS = klass.prepare_apps(key_as_array(jdata, ['deps', 'dependings', 'dep', 'depending']))
     conf.APPS = klass.prepare_apps(key_as_array(jdata, ['apps', 'applications', 'app', 'application']))
     conf.BUILD = jdata.get('build', None)
@@ -205,19 +207,18 @@ class Config:
       self.GO = 'go'
 
     os.environ['GOPATH'] = self.DIRNAME
-    os.environ['PATH'] = '%s;%s/bin' % (os.environ['PATH'], self.DIRNAME)
+    os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.DIRNAME)
 
     if self.ENVIRON:
-      for k in self.ENVIRON:
+      for k, v in self.ENVIRON.items():
         if k != 'ENV':
-          v = self.ENVIRON[k]
           if v:
             os.environ[k] = v
 
       if self.ENVIRON.get('GOARM', None) and not self.ENVIRON.get('GOARCH', None):
         os.environ['GOARCH'] = 'arm'
 
-      if 'ENV' in self.ENVIRON:
+      if 'ENV' in self.ENVIRON and self.ENVIRON['ENV']:
         for s in self.ENVIRON:
           if s:
             os.system(s)
@@ -309,7 +310,10 @@ def project_init_env(conf):
 def project_go_command(command, conf, args=None):
   project_init_env(conf)
   if not args: args = []
-  cmd = '%s %s %s' % (conf.GO, command, ' '.join(args))
+  cpost = ''
+  if command+'_post' in conf.CONF:
+    cpost = '%s ' % conf.CONF[command+'_post']
+  cmd = '%s %s %s%s' % (conf.GO, command, cpost, ' '.join(args))
   print(cmd)
   os.system(cmd)
 
@@ -401,6 +405,8 @@ def process_action(action, conf, args):
     project_go_src_command('doc', conf, args)
   elif 'tool' == action:
     project_go_command('tool', conf, args)
+  elif 'info' == action:
+    print_env(conf)
   elif 'version' == action:
     print('goproj version %s %s %s' % (__version__, __autor__, __year__))
   elif 'help' == action:
@@ -431,6 +437,7 @@ HELP = {
   'tool'    : 'run specified go tool',
   'vet'     : 'run go tool vet on packages',
   'version' : 'show goproj version',
+  'info'    : 'print enviroment info',
   'help'    : 'show help or help [command]'
 }
 
@@ -440,6 +447,26 @@ def print_help():
   for k in HELP:
     print('{0:10s} {1:s}'.format(k, HELP.get(k)))
   print('')
+
+def print_env(conf):
+  project_init_env(conf)
+
+  print("PATH=%s" % os.environ['PATH'])
+  print("GO=%s" % conf.GO)
+  print("GOPATH=%s" % os.environ['GOPATH'])
+
+  for k, v in conf.ENVIRON.items():
+    if 'ENV' == k:
+      if isinstance(v, dict):
+        for k2, v2 in v.items():
+          if v2:
+            print("export %s=%s" % (k2, v2))
+      elif v:
+        for v2 in v:
+          if v2:
+            print(v2)
+    elif v:
+      print("export %s=%s" % (k, v))
 
 ###
 # MAIN
