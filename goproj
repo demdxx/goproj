@@ -107,7 +107,7 @@ class Config:
     if env and isinstance(env, dict):
       conf.ENVIRON.update(env)
     else:
-      conf.ENVIRON['ENV'] = env
+      conf.ENVIRON['ENV'] = env # Custom environ settings
 
     conf.inited = True
 
@@ -117,13 +117,13 @@ class Config:
   def prepare_apps(apps):
     if not apps or isinstance(apps, dict):
       return apps
-    arr = {}
+    data = {}
     for v in apps:
       if isinstance(v, basestring):
-        arr[v] = {}
+        data[v] = {}
       elif isinstance(v, dict):
-        arr.update(v)
-    return arr
+        data.update(v)
+    return data
 
   @classmethod
   def find_project_file(klass, dir, filenames=None):
@@ -133,7 +133,6 @@ class Config:
     @filenames string or array name variants
     @return (projectdir, absfilepath)
     """
-
     if not dir:
       return None, None
 
@@ -177,7 +176,9 @@ class Config:
 
   def apps_list(self):
     if self.APPS and len(self.APPS)>0:
-      return self.APPS
+      d = self.APPS
+      d.update(self.DEPS)
+      return d
     self.APPS = self.__class__.__apps_find_in(self.DIRNAME+'/src', '')
     return self.APPS
 
@@ -188,15 +189,18 @@ class Config:
     else:
       print('No dependencies')
 
+  # Print list of
   def print_application_list(self):
     for app in self.apps_list():
       print(app)
 
+  # Set application environ
   def set_env(self):
     if not self.DIRNAME:
       print("Project file \".goproj\" not found")
       exit(-1)
 
+    # Search go path
     self.GO = subprocess.Popen("which go", shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
     if not self.GO:
       for _go in GOPATHS:
@@ -206,9 +210,19 @@ class Config:
     if not self.GO:
       self.GO = 'go'
 
-    os.environ['GOPATH'] = self.DIRNAME
+    # Search go path dirs
+    GOPATH = self.DIRNAME
+    if 'paths' in self.CONF:
+      if isinstance(self.CONF['paths'], basestring):
+        self.CONF['paths'] = [self.CONF['paths']]
+      if len(self.CONF['paths']) > 0:
+        GOPATH += ':' + ':'.join(self.CONF['paths']).format(projectpath=self.DIRNAME)
+    os.environ['GOPATH'] = GOPATH
+
+    # Add project path
     os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.DIRNAME)
 
+    # Init enviroments
     if self.ENVIRON:
       for k, v in self.ENVIRON.items():
         if k != 'ENV':
@@ -242,6 +256,7 @@ def command_line_prepare(args):
     else:
       _strings.append(a)
   return _strings, _flags
+
 
 ###
 # Execution methods
@@ -392,7 +407,7 @@ def process_action(action, conf, args):
   elif 'clean' == action:
     project_go_command('clean', conf, args)
   elif 'run' == action:
-    project_go_command('run', conf, args)
+    project_go_src_command('run', conf, args)
   elif 'fmt' == action:
     project_go_src_command('fmt', conf, args)
   elif 'fix' == action:
