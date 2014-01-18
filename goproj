@@ -338,17 +338,17 @@ def project_go_src_command(command, conf, apps, args=None):
   if not args:
     args = []
 
-  if not apps:
-    apps = conf.apps_list()
+  lapps = conf.apps_list()
 
-  if isinstance(apps, dict):
-    for app, params in apps.items():
-      if params and command in params:
-        cmd = params[command].format(go=conf.GO, cmd=command, app=app)
-      else:
-        cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
-      print(cmd)
-      os.system(cmd)
+  if isinstance(lapps, dict):
+    for app, params in lapps.items():
+      if not apps or len(apps) < 1 or app in apps:
+        if params and command in params:
+          cmd = params[command].format(go=conf.GO, cmd=command, app=app)
+        else:
+          cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
+        print(cmd)
+        os.system(cmd)
   else:
     for app in apps:
       cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
@@ -385,8 +385,6 @@ def project_go_test(conf, args=None):
     args = ['-v']
 
   apps, flags = command_line_prepare(args)
-  if len(apps) < 1:
-    apps = conf.apps_list()
   return project_go_src_command('test', conf, apps, flags)
 
 def process_action(action, conf, args):
