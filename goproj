@@ -30,9 +30,9 @@ try:
 except ImportError:
   import simplejson as json
 
-__version__ = '0.0.3'
+__version__ = '1.0.0alpha'
 __autor__ = 'Dmitry Ponomarev <demdxx@gmail.com>'
-__year__ = '2013'
+__year__ = '2014'
 __license__ = 'MIT'
 
 
@@ -46,6 +46,22 @@ GOPATHS = [
 ]
 
 
+def load_config(filepath):
+  # load file
+  with open(filepath, 'rb') as file:
+    data = ''.join([row for row in file])
+    # Try parse json project
+    try:
+      jdata = json.loads(data)
+    except Exception, e: # else eval as python
+      jdata = eval(data)
+    return jdata
+  return None
+
+def save_config(filepath, conf):
+  with open(filepath, 'w') as file:
+    file.write(json.dumps(conf))
+
 def key_as_array(dictionary, keys):
   if not isinstance(keys, (list, tuple)):
     keys = [keys]
@@ -55,66 +71,158 @@ def key_as_array(dictionary, keys):
         if isinstance(dictionary[k], (list, tuple)) else [dictionary[k]]
   return None
 
+def out(str):
+  print(str)
+
+###############################################################################
+### Go Project Config
+###############################################################################
 
 class Config:
-  """
-  Build config class
-  """
-  def __init__(self):
+
+  def __init__(self, dir=None, filenames=None):
     self.inited = False
+    self.SOLUTIONDIR = None
     self.DIRNAME = None
     self.CONFIGPATH = None
     self.DEPS = []
-    self.APPS = []
+    self.APP = {}
     self.BUILD = []
     self.ENVIRON = {}
-    self.GO = 'go'
+    self.GO = self.__class__.__go()
     self.CONF = {}
+    if dir is not None:
+      self.load(dir, filenames)
 
-  def save(self):
-    pass
+  def load(self, confpath):
+    if confpath is None:
+      return self
 
-  @classmethod
-  def load(klass, dir, filenames=None):
-    dirname, filepath = klass.find_project_file(dir, filenames=filenames)
-    if dirname is None:
-      return None
+    jdata = load_config(confpath)
 
-    file = open(filepath, 'rb')
-    data = ''.join([row for row in file])
-    file.close()
+    self.CONF = jdata
+    self.DEPS = self.__class__.__prepare_apps(key_as_array(jdata, ['deps', 'dependings']))
+    self.BUILD = jdata.get('build', None)
 
-    try:
-      jdata = json.loads(data)
-    except Exception, e:
-      jdata = eval(data)
-    conf = klass()
-    data = None # Release memory
+    self.CONFIGPATH = confpath
+    self.DIRNAME = os.path.dirname(confpath)
+    self.SOLUTIONDIR = os.path.dirname(os.path.dirname(self.DIRNAME))
 
-    conf.CONF = jdata
-    conf.DEPS = klass.prepare_apps(key_as_array(jdata, ['deps', 'dependings', 'dep', 'depending']))
-    conf.APPS = klass.prepare_apps(key_as_array(jdata, ['apps', 'applications', 'app', 'application']))
-    conf.BUILD = jdata.get('build', None)
+    self.ENVIRON['GOOS'] = jdata.get('os', None)
+    self.ENVIRON['GOARCH'] = jdata.get('arch', None)
+    self.ENVIRON['GOARM'] = jdata.get('arm', None)
 
-    conf.DIRNAME = dirname
-    conf.CONFIGPATH = filepath
-    conf.ENVIRON['GOOS'] = jdata.get('os', None)
-    conf.ENVIRON['GOARCH'] = jdata.get('arch', None)
-    conf.ENVIRON['GOARM'] = jdata.get('arm', None)
+    self.APP = self.CONF.copy()
+    self.APP.pop('deps', None)
+    self.APP.pop('dependings', None)
 
     # Custom enviroment
     env = jdata.get('env', None)
     if env and isinstance(env, dict):
-      conf.ENVIRON.update(env)
+      self.ENVIRON.update(env)
     else:
-      conf.ENVIRON['ENV'] = env # Custom environ settings
+      self.ENVIRON['ENV'] = env # Custom environ settings
 
-    conf.inited = True
+    self.inited = True
 
-    return conf
+    return self
+
+  # Set application environ
+  def set_env(self, appname=None):
+    if not self.inited:
+      return False
+
+    # Search go path dirs
+    os.environ['GOPATH'] = self.__gopath()
+
+    # Add project path
+    os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.DIRNAME)
+
+    # Init enviroments
+    env = self.environ(appname)
+    if env:
+      for k, v in env.items():
+        if v and k != 'ENV':
+          os.environ[k] = v
+
+      # execute system commands
+      if 'ENV' in env and env['ENV']:
+        for s in env['ENV']:
+          os.system(s)
+
+    # Set build architecture
+    arch = self.arch()
+    if arch:
+      os.environ['GOARCH'] = arch
+
+    return True
+
+  #############################################################################
+  ### Getters/Setters
+  #############################################################################
+
+  def go(self):
+    if not self.GO:
+      self.GO = self.gopath()
+    return self.GO
+
+  def gopath(self):
+    if not hasattr(self, 'GOPATH'):
+      self.GOPATH = self.__gopath()
+    return self.GOPATH
+
+  def deps(self):
+    return self.DEPS
+
+  def apps(self):
+    return self.APP.copy().update(self.DEPS)
+
+  def arch(self):
+    return self.ENVIRON.get('GOARCH', 'arm' if self.ENVIRON.get('GOARM', None) else None)
+
+  def environ(self, appname=None):
+    if appname is None:
+      return self.ENVIRON
+    apps = self.deps()
+    if appname in apps:
+      appenv = apps[appname].get('env', None)
+      if appenv:
+        env = self.ENVIRON.copy()
+        env.update(appenv)
+        return env
+    return self.ENVIRON
+
+  #############################################################################
+  ### Helpers
+  #############################################################################
+
+  def prepare_path(self, path):
+    return path.format(projectpath=self.DIRNAME)
+
+  def __gopath(self):
+    GOPATH = self.DIRNAME
+    if 'paths' in self.CONF:
+      if isinstance(self.CONF['paths'], basestring):
+        self.CONF['paths'] = [self.CONF['paths']]
+      if len(self.CONF['paths']) > 0:
+        GOPATH += ':' + ':'.join(self.CONF['paths'])
+    return self.prepare_path(GOPATH)
+
+  @classmethod
+  def __go(self):
+    # Search go path
+    GO = subprocess.Popen("which go", shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
+    if not GO:
+      for _go in GOPATHS:
+        if os.path.isfile(_go) or os.path.islink(_go):
+          GO = _go
+          break
+    if not GO:
+      GO = 'go'
+    return GO
 
   @staticmethod
-  def prepare_apps(apps):
+  def __prepare_apps(apps):
     if not apps or isinstance(apps, dict):
       return apps
     data = {}
@@ -125,150 +233,14 @@ class Config:
         data.update(v)
     return data
 
-  @classmethod
-  def find_project_file(klass, dir, filenames=None):
-    """
-    Find project file config, recursion up to tree
-    @param current dir path
-    @filenames string or array name variants
-    @return (projectdir, absfilepath)
-    """
-    if not dir:
-      return None, None
 
-    if not filenames:
-      filenames = ['config.goproj', '.goproj']
-    elif isinstance(filenames, basestring):
-      filenames = [filenames]
+###############################################################################
+### Go Project Manager
+###############################################################################
 
-    for fname in filenames:
-      pathname = '%s/%s' % (dir, fname)
-      if os.path.isfile(pathname) or os.path.islink(pathname):
-        return dir, os.path.realpath(pathname)
+class Project:
 
-    if len(dir)<1 or dir=='/':
-      return None, None
-
-    return klass.find_project_file(dir=os.path.dirname(dir), filenames=filenames)
-
-  def get_dep(self, name):
-    return None, None
-
-  @classmethod
-  def __apps_find_in(klass, dir, sdir=''):
-    files = os.listdir('%s/%s/' % (dir, sdir))
-    for f in files:
-      if f.endswith('.go') and os.path.isfile('%s/%s/%s' % (dir, sdir, f)):
-        return sdir
-
-    result = {}
-    for f in files:
-      spath = '%s/%s' % (sdir, f) if sdir and len(sdir)>0 else f
-      dpath = '%s/%s' % (dir, spath)
-      if not os.path.isfile(dpath):
-        r = klass.__apps_find_in(dir, spath)
-        if r and len(r)>0:
-          if isinstance(r, basestring):
-            result[r] = {}
-          else:
-            result.update(r)
-    return result
-
-  def apps_list(self):
-    if self.APPS and len(self.APPS)>0:
-      d = self.APPS
-      d.update(self.DEPS)
-      return d
-    self.APPS = self.__class__.__apps_find_in(self.DIRNAME+'/src', '')
-    return self.APPS
-
-  def print_depending_list(self):
-    if self.DEPS and len(self.DEPS)>0:
-      for dep in self.DEPS:
-        print(dep)
-    else:
-      print('No dependencies')
-
-  # Print list of
-  def print_application_list(self):
-    for app in self.apps_list():
-      print(app)
-
-  # Set application environ
-  def set_env(self):
-    if not self.DIRNAME:
-      print("Project file \".goproj\" not found")
-      exit(-1)
-
-    # Search go path
-    self.GO = subprocess.Popen("which go", shell=True, stdout=subprocess.PIPE).communicate()[0].strip()
-    if not self.GO:
-      for _go in GOPATHS:
-        if os.path.isfile(_go) or os.path.islink(_go):
-          self.GO = _go
-          break
-    if not self.GO:
-      self.GO = 'go'
-
-    # Search go path dirs
-    GOPATH = self.DIRNAME
-    if 'paths' in self.CONF:
-      if isinstance(self.CONF['paths'], basestring):
-        self.CONF['paths'] = [self.CONF['paths']]
-      if len(self.CONF['paths']) > 0:
-        GOPATH += ':' + ':'.join(self.CONF['paths']).format(projectpath=self.DIRNAME)
-    os.environ['GOPATH'] = GOPATH
-
-    # Add project path
-    os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.DIRNAME)
-
-    # Init enviroments
-    if self.ENVIRON:
-      for k, v in self.ENVIRON.items():
-        if k != 'ENV':
-          if v:
-            os.environ[k] = v
-
-      if self.ENVIRON.get('GOARM', None) and not self.ENVIRON.get('GOARCH', None):
-        os.environ['GOARCH'] = 'arm'
-
-      if 'ENV' in self.ENVIRON and self.ENVIRON['ENV']:
-        for s in self.ENVIRON:
-          if s:
-            os.system(s)
-
-
-def command_line_prepare(args):
-  _flags = []
-  _strings = []
-  if not args:
-    return _strings, _flags
-  add_next = False
-  for a in args:
-    if add_next:
-      _flags.append(a)
-      add_next = False
-    elif a[:2] == '--':
-      add_next = True
-      _flags.append(a)
-    elif a[0] == '-':
-      _flags.append(a)
-    else:
-      _strings.append(a)
-  return _strings, _flags
-
-
-###
-# Execution methods
-###
-
-PROJECT_STRUCTURE = [
-  'bin',
-  'src/{projectname}',
-  'pkg'
-]
-
-PROJECT_FILE = """{
+  PROJECT_FILE = """{
   "project": "{projectname}",
   "version": "0.0.1",
   # "os": None, # Default
@@ -283,218 +255,449 @@ PROJECT_FILE = """{
   #   # },
   # },
 
-  "apps": [
-    # default all from src
-    "{projectname}",
-  ],
-
-  # "apps": {
-  #   "{projectname}": {
-  #     # Custom config
-  #   }
-  # },
-
   # @TODO: HOOKS
   # "hooks": {"command": {"before": ["script/path", ...]}, "after": ["script/path", ...]},
 }
 """
 
-def project_init(dirpath, projectname, subdir=None):
-  if not projectname or  len(projectname)<1:
-    print('Enter project name')
-    return None
+  def __init__(self, config):
+    self.config = config if isinstance(config, Config) else Config(config)
 
-  if subdir is None or len(subdir) < 1:
-    subdir = projectname
+  @classmethod
+  def init(self, solutionpath, projdir, projectname):
+    if not projectname or  len(projectname)<1:
+      out('Enter project name')
+      return None
 
-  for d in PROJECT_STRUCTURE:
-    directory = '%s/%s/%s' % (dirpath, subdir, d.format(projectname=projectname).lower())
-    if not os.path.exists(directory):
-      os.makedirs(directory)
+    projectpath = "%s/%s" % (solutionpath, projdir)
+    config_path = "%s/.goproj" % projectpath
+    goproj = open(config_path, "w")
+    goproj.write(self.PROJECT_FILE.format(projectname=projectname, solutionpath=solutionpath, projectpath=projectpath))
+    goproj.close()
 
-  goproj = open("%s/%s/.goproj" % (dirpath, subdir), "w")
-  goproj.write(PROJECT_FILE.replace('{projectname}', projectname))
-  goproj.close()
+    return self(config_path)
 
-def project_init_env(conf):
-  if not conf:
-    print("Project file \".goproj\" not found")
-    raise
-  conf.set_env()
+  #############################################################################
+  ### Commands
+  #############################################################################
 
-def project_go_command(command, conf, args=None):
-  project_init_env(conf)
-  if not args: args = []
-  cpost = ''
-  if command+'_post' in conf.CONF:
-    cpost = '%s ' % conf.CONF[command+'_post']
-  cmd = '%s %s %s%s' % (conf.GO, command, cpost, ' '.join(args))
-  print(cmd)
-  os.system(cmd)
+  def exect(self, command, args=None):
+    """
+    Run simple command
+    @param command
+    @param args
+    """
+    self.set_env()
+    cmd = '%s %s %s' % (self.config.go(), command, ' '.join(args or []))
+    out(cmd)
+    os.system(cmd)
 
-def project_go_src_command(command, conf, apps, args=None):
-  project_init_env(conf)
+  def execute(self, command, apps, args=None, custom_only=False, dependencies=False):
+    """
+    Run the command separately for each dependency
+    """
+    self.set_env()
 
-  if not args:
-    args = []
+    if not args:
+      args = []
 
-  lapps = conf.apps_list()
+    lapps = self.config.deps() if dependencies else self.config.apps()
 
-  if isinstance(lapps, dict):
-    for app, params in lapps.items():
-      if not apps or len(apps) < 1 or app in apps:
-        if params and command in params:
-          cmd = params[command].format(go=conf.GO, cmd=command, app=app)
+    if not lapps or len(lapps) < 1:
+      return self
+
+    if apps and len(apps) > 0:
+      for app in apps:
+        cmd = None
+        if app in lapps:
+          params = lapps[app]
+          if command in params:
+            s_cmd = params[command]
+            if s_cmd:
+              cmd = s_cmd.format(go=self.config.go(), cmd=command, app=app)
+          elif not custom_only:
+            cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         else:
-          cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
-        print(cmd)
-        os.system(cmd)
-  else:
-    for app in apps:
-      cmd = '%s %s %s %s' % (conf.GO, command, ' '.join(args), app)
-      print(cmd)
-      os.system(cmd)
-
-def project_go_build(conf, args=None):
-  if not args or len(args) < 1:
-    args = conf.BUILD
-  return project_go_src_command('build', conf, args)
-
-def project_go_deps_get(conf, args=None):
-  """
-  Get and install dependencies or custom install
-  @param conf
-  @param args[] or None
-  """
-  if args is not None and len(args)>0:
-    return project_go_src_command('get', conf, args)
-  if isinstance(conf.DEPS, dict):
-    project_init_env(conf)
-    for dep, params in conf.DEPS.items():
-      cmd = '%s get %s' % (conf.GO, dep)
-      print(cmd)
-      os.system(cmd)
-      # Build after get
-      if params and 'build' in params:
-        cmd = params['build'].format(go=conf.GO, cmd='build', app=dep)
-        print(cmd)
-        os.system(cmd)
-
-def project_go_test(conf, args=None):
-  if not args:
-    args = ['-v']
-
-  apps, flags = command_line_prepare(args)
-  return project_go_src_command('test', conf, apps, flags)
-
-def process_action(action, conf, args):
-  if 'init' == action:
-    subdir = args[0] if len(args) > 1 else None
-    projectname = args[1] if len(args) > 1 else args[0]
-    project_init(dirpath=os.getcwd(), projectname=projectname, subdir=subdir)
-  elif 'deps' == action:
-    conf.print_depending_list()
-  elif action in ['depinstall', 'get']:
-    project_go_deps_get(conf, args)
-  elif 'list' == action:
-    conf.print_application_list()
-  elif 'build' == action:
-    project_go_build(conf, args)
-  elif 'install' == action:
-    project_go_src_command('install', conf, args)
-  elif 'clean' == action:
-    project_go_command('clean', conf, args)
-  elif 'run' == action:
-    project_go_src_command('run', conf, args)
-  elif 'fmt' == action:
-    project_go_src_command('fmt', conf, args)
-  elif 'fix' == action:
-    project_go_src_command('fix', conf, args)
-  elif 'test' == action:
-    project_go_test(conf, args)
-  elif 'vet' == action:
-    project_go_src_command('vet', conf, args)
-  elif 'doc' == action:
-    project_go_src_command('doc', conf, args)
-  elif 'tool' == action:
-    project_go_command('tool', conf, args)
-  elif 'info' == action:
-    print_env(conf)
-  else 'go' == action:
-    print_go_path(conf)
-  elif 'version' == action:
-    print('goproj version %s %s %s' % (__version__, __autor__, __year__))
-  elif 'help' == action:
-    if len(args)>0:
-      project_go_command('help', conf, args)
+          cmd = '%s %s %s' % (self.config.go(), command, ' '.join(args))
+        if cmd:
+          out(cmd)
+          os.system(cmd)
     else:
-      print_help()
-  else:
-    print_help()
+      for app, params in lapps.items():
+        cmd = None
+        if params and command in params:
+          s_cmd = params[command]
+          if s_cmd:
+            cmd = s_cmd.format(go=self.config.go(), cmd=command, app=app)
+        elif not custom_only:
+          cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
+        if cmd:
+          out(cmd)
+          os.system(cmd)
+    return self
 
-###
-# Print help
-###
+  def get(self, apps=None, args=None):
+    return self.execute('get', args, args, dependencies=True)
 
-HELP = {
-  'init'    : 'create project structure. goptoj init [folder] <name>',
-  'deps'    : 'list of dependencies',
-  'list'    : 'list packages',
-  'build'   : 'compile packages and dependencies',
-  'clean'   : 'remove object files',
-  'doc'     : 'run godoc on package sources',
-  'fix'     : 'run go tool fix on packages',
-  'fmt'     : 'run gofmt on package sources',
-  'get'     : 'download and install packages and dependencies',
-  'install' : 'compile and install packages and dependencies',
-  'run'     : 'compile and run Go program',
-  'test'    : 'test packages',
-  'tool'    : 'run specified go tool',
-  'vet'     : 'run go tool vet on packages',
-  'version' : 'show goproj version',
-  'info'    : 'print enviroment info',
-  'go'      : 'return path for go',
-  'help'    : 'show help or help [command]'
-}
+  def build(self, apps, args=None):
+    if not args or len(args) < 1:
+      args = self.config.BUILD
+    return self.execute('build', apps, args)
 
-def print_help():
-  print('GOPROJ v%s %s %s' % (__version__, __autor__, __year__))
-  print("======================================================")
-  for k in HELP:
-    print('{0:10s} {1:s}'.format(k, HELP.get(k)))
-  print('')
+  def install(self, apps=None, args=None):
+    return self.execute('install', apps, args, dependencies=True)
 
-def print_env(conf):
-  project_init_env(conf)
+  def clean(self, args=None):
+    return self.exect('clean', args)
 
-  print("PATH=%s" % os.environ['PATH'])
-  print("GO=%s" % conf.GO)
-  print("GOPATH=%s" % os.environ['GOPATH'])
+  def run(self, apps=None, args=None):
+    return self.execute('run', apps, args, custom_only=True)
 
-  for k, v in conf.ENVIRON.items():
-    if 'ENV' == k:
-      if isinstance(v, dict):
-        for k2, v2 in v.items():
-          if v2:
-            print("export %s=%s" % (k2, v2))
+  def fmt(self, apps=None, args=None):
+    return self.execute('fmt', apps, args)
+
+  def fix(self, apps=None, args=None):
+    return self.execute('fix', apps, args)
+
+  def vet(self, apps=None, args=None):
+    return self.execute('vet', apps, args)
+
+  def doc(self, apps=None, args=None):
+    return self.execute('doc', apps, args)
+
+  def tool(self, args=None):
+    return self.exect('tool', args)
+
+  def test(self, apps, flags=None):
+    return self.execute('test', apps, flags if flags and len(flags) > 0 else ['-v'])
+
+  def print_deps(self):
+    deps = self.config.deps()
+    if deps and len(deps)>0:
+      for dep in deps:
+        out(dep)
+    else:
+      out('No dependencies')
+
+  def print_apps(self):
+    apps = self.config.apps()
+    if apps and len(apps)>0:
+      for app in apps:
+        out(app)
+    else:
+      out('No applications')
+
+  def print_env(self):
+    self.config.set_env()
+
+    out("PATH=%s" % os.environ['PATH'])
+    out("GO=%s" % self.config.go())
+    out("GOPATH=%s" % os.environ['GOPATH'])
+
+    for k, v in self.config.environ().items():
+      if 'ENV' == k:
+        if isinstance(v, dict):
+          for k2, v2 in v.items():
+            if v2:
+              print("export %s=%s" % (k2, v2))
+        elif v:
+          for v2 in v:
+            if v2:
+              out(v2)
       elif v:
-        for v2 in v:
-          if v2:
-            print(v2)
-    elif v:
-      print("export %s=%s" % (k, v))
+        out("export %s=%s" % (k, v))
 
-def print_go_path(conf):
-  project_init_env(conf)
-  print(conf.GO)
+  def print_go_path(self):
+    out(self.config.go())
 
-###
-# MAIN
-###
+  #############################################################################
+  ### Helpers
+  #############################################################################
 
+  def set_env(self, app=None):
+    if not self.config.set_env(app):
+      out("I can't initialize the environment")
+      exit(-1)
+
+
+###############################################################################
+### Solution config
+###############################################################################
+class Solution:
+
+  SOLUTION_STRUCTURE = [
+    'bin',
+    'src',
+    'pkg'
+  ]
+
+  def __init__(self, dirname):
+    dirname, filepath = self.__find_solution_file(dirname)
+    if dirname is None:
+      self.valid = False
+    else:
+      self.dirname = dirname
+      self.filepath = filepath
+      self.apps = load_config(filepath)
+      self.valid = True
+
+  @classmethod
+  def init(self, dirpath):
+    for d in self.SOLUTION_STRUCTURE:
+      directory = '%s/%s' % (dirpath, d)
+      if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    solution_path = "%s/.gosolution" % dirpath
+    if not os.path.exists(solution_path):
+      save_config(solution_path, {})
+
+    return self(solution_path)
+
+  def init_project(self, dirname, conf=None):
+    if not self.valid:
+      return False
+    path = '%s/%s' % (self.dirname, dirname)
+    if not os.path.exists('%s/.goproj' % path):
+      os.makedirs(path)
+      if conf is None or not ('hg' in conf and 'git' in conf):
+        Project.init(path, dirname)
+      elif 'hg' in conf:
+        os.system('cd %s\nhg clone %s' % (path, conf['hg']))
+      else: # git in conf
+        os.system('cd %s\ngit clone %s' % (path, conf['git']))
+      if not os.path.exists('%s/.goproj' % path):
+        return False
+      self.apps[dirname] = conf
+      save_config(self.solution_path, self.apps)
+    return True
+
+  #############################################################################
+  ### Getters/Setters
+  #############################################################################
+
+  @property
+  def projects(self):
+    if hasattr(self, 'project_list'):
+      return self.project_list
+    self.project_list = {}
+    for app in self.apps:
+      self.project_list[app] = Project('%s/%s' % (os.getcwd(), app))
+    return self.project_list
+
+  #############################################################################
+  ### Commands
+  #############################################################################
+
+  def get(self, apps=None, args=None):
+    return self.execute('get', args, args, dependencies=True)
+
+  def build(self, apps, args=None):
+    if not args or len(args) < 1:
+      args = self.config.BUILD
+    return self.execute('build', apps, args)
+
+  def install(self, apps=None, args=None):
+    return self.execute('install', apps, args, dependencies=True)
+
+  def clean(self, args=None):
+    return self.exect('clean', args)
+
+  def run(self, apps=None, args=None):
+    return self.execute('run', apps, args, custom_only=True)
+
+  def fmt(self, apps=None, args=None):
+    return self.execute('fmt', apps, args)
+
+  def fix(self, apps=None, args=None):
+    return self.execute('fix', apps, args)
+
+  def vet(self, apps=None, args=None):
+    return self.execute('vet', apps, args)
+
+  def doc(self, apps=None, args=None):
+    return self.execute('doc', apps, args)
+
+  def tool(self, args=None):
+    return self.exect('tool', args)
+
+  def test(self, apps, flags=None):
+    return self.execute('test', apps, flags if flags and len(flags) > 0 else ['-v'])
+
+  def print_deps(self):
+    deps = self.config.deps()
+    if deps and len(deps)>0:
+      for dep in deps:
+        out(dep)
+    else:
+      out('No dependencies')
+
+  def print_apps(self):
+    apps = self.config.apps()
+    if apps and len(apps)>0:
+      for app in apps:
+        out(app)
+    else:
+      out('No applications')
+
+  def print_env(self):
+    next(self.projects.itervalues()).print_env()
+
+  def print_go_path(self):
+    next(self.projects.itervalues()).print_go_path()
+
+  #############################################################################
+  ### Helpers
+  #############################################################################
+
+  @classmethod
+  def __find_solution_file(klass, dir, filenames=None):
+    """
+    Find solution file config, recursion up to tree
+    @param current dir path
+    @param filenames string or array name variants
+    @return (projectdir, absfilepath)
+    """
+    if not dir:
+      return None, None
+
+    if os.path.isfile(dir):
+      return os.path.dirname(dir), os.path.realpath(dir)
+
+    if not filenames:
+      filenames = ['.solution']
+    elif isinstance(filenames, basestring):
+      filenames = [filenames]
+
+    for fname in filenames:
+      pathname = '%s/%s' % (dir, fname)
+      if os.path.isfile(pathname) or os.path.islink(pathname):
+        return dir, os.path.realpath(pathname)
+
+    if len(dir)<1 or dir=='/':
+      return None, None
+
+    return klass.__find_solution_file(dir=os.path.dirname(dir), filenames=filenames)
+
+###############################################################################
+### Main Console Programm
+###############################################################################
+class Go:
+  """
+  Program to execute commands from the console
+  """
+
+  HELP = {
+    'init'    : 'create project structure. goptoj init [folder] <name>',
+    'deps'    : 'list of dependencies',
+    'list'    : 'list packages',
+    'build'   : 'compile packages and dependencies',
+    'clean'   : 'remove object files',
+    'doc'     : 'run godoc on package sources',
+    'fix'     : 'run go tool fix on packages',
+    'fmt'     : 'run gofmt on package sources',
+    'get'     : 'download and install packages and dependencies',
+    'install' : 'compile and install packages and dependencies',
+    'run'     : 'compile and run Go program',
+    'test'    : 'test packages',
+    'tool'    : 'run specified go tool',
+    'vet'     : 'run go tool vet on packages',
+    'version' : 'show goproj version',
+    'info'    : 'print enviroment info',
+    'go'      : 'return path for go',
+    'help'    : 'show help or help [command]'
+  }
+
+  @classmethod
+  def proj(self):
+    return Project(os.getcwd())
+
+  @classmethod
+  def run(self, action, args):
+    if 'init' == action:
+      subdir = args[0] if len(args) > 1 else None
+      projectname = args[1] if len(args) > 1 else args[0]
+      Project.init(dirpath=os.getcwd(), projectname=projectname, subdir=subdir)
+    else:
+      words, flags = self.command_line_prepare(args)
+      if 'deps' == action:
+        self.proj().print_deps()
+      elif 'list' == action:
+        self.proj().print_apps()
+      elif action == 'get':
+        self.proj().get(words, flags)
+      elif 'build' == action:
+        self.proj().build(words, flags)
+      elif 'install' == action:
+        self.proj().install(words, flags)
+      elif 'clean' == action:
+        self.proj().clean(args)
+      elif 'run' == action:
+        self.proj().run(words, flags)
+      elif 'fmt' == action:
+        self.proj().fmt(words, flags)
+      elif 'fix' == action:
+        self.proj().fix(words, flags)
+      elif 'test' == action:
+        self.proj().test(words, flags)
+      elif 'vet' == action:
+        self.proj().vet(words, flags)
+      elif 'doc' == action:
+        self.proj().doc(words, flags)
+      elif 'tool' == action:
+        self.proj().tool(args)
+      elif 'info' == action:
+        self.proj().print_env()
+      elif 'go' == action:
+        self.proj().print_go_path()
+      elif 'version' == action:
+        print('goproj version %s %s %s' % (__version__, __autor__, __year__))
+      elif 'help' == action:
+        if len(args)>0:
+          self.proj().help('help', conf, args)
+        else:
+          self.print_help()
+      else:
+        print 100
+        self.print_help()
+
+  @classmethod
+  def print_help(self):
+    out('GOPROJ v%s %s %s' % (__version__, __autor__, __year__))
+    out("======================================================")
+    for k, v in self.HELP.items():
+      out('{0:10s} {1:s}'.format(k, v))
+    out('')
+
+  #############################################################################
+  ### Helpers
+  #############################################################################
+
+  @staticmethod
+  def command_line_prepare(args):
+    _flags = []
+    _strings = []
+    if not args:
+      return _strings, _flags
+    add_next = False
+    for a in args:
+      if add_next:
+        _flags.append(a)
+        add_next = False
+      elif a[:2] == '--':
+        add_next = True
+        _flags.append(a)
+      elif a[0] == '-':
+        _flags.append(a)
+      else:
+        _strings.append(a)
+    return _strings, _flags
+
+
+###############################################################################
+### Main
+###############################################################################
 if __name__ == "__main__":
   args = sys.argv[1:]
   action = args[0] if len(args)>0 else ''
-  conf = Config.load(os.getcwd())
-  process_action(action, conf, args[1:] if len(args)>1 else [])
-
+  Go.run(action, args[1:] if len(args)>1 else [])
