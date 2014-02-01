@@ -30,7 +30,7 @@ try:
 except ImportError:
   import simplejson as json
 
-__version__ = '0.0.3beta'
+__version__ = '0.0.3'
 __autor__ = 'Dmitry Ponomarev <demdxx@gmail.com>'
 __year__ = '2013'
 __license__ = 'MIT'
@@ -420,6 +420,8 @@ def process_action(action, conf, args):
     project_go_command('tool', conf, args)
   elif 'info' == action:
     print_env(conf)
+  else 'go' == action:
+    print_go_path(conf)
   elif 'version' == action:
     print('goproj version %s %s %s' % (__version__, __autor__, __year__))
   elif 'help' == action:
@@ -451,6 +453,7 @@ HELP = {
   'vet'     : 'run go tool vet on packages',
   'version' : 'show goproj version',
   'info'    : 'print enviroment info',
+  'go'      : 'return path for go',
   'help'    : 'show help or help [command]'
 }
 
@@ -480,6 +483,10 @@ def print_env(conf):
             print(v2)
     elif v:
       print("export %s=%s" % (k, v))
+
+def print_go_path(conf):
+  project_init_env(conf)
+  print(conf.GO)
 
 ###
 # MAIN
