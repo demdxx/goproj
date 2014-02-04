@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 import os, sys, subprocess
+from urlparse import urlparse
 
 try:
   import json
@@ -80,7 +81,7 @@ def out(str):
 
 class Config:
 
-  def __init__(self, dir=None, filenames=None):
+  def __init__(self, confpath=None):
     self.inited = False
     self.SOLUTIONDIR = None
     self.DIRNAME = None
@@ -91,8 +92,8 @@ class Config:
     self.ENVIRON = {}
     self.GO = self.__class__.__go()
     self.CONF = {}
-    if dir is not None:
-      self.load(dir, filenames)
+    if confpath is not None:
+      self.load(confpath)
 
   def load(self, confpath):
     if confpath is None:
@@ -261,7 +262,7 @@ class Project:
 """
 
   def __init__(self, config):
-    self.config = config if isinstance(config, Config) else Config(config)
+    self.config = config if isinstance(config, Config) else Config('%s/.goproj' % config)
 
   @classmethod
   def init(self, solutionpath, projdir, projectname):
@@ -431,6 +432,8 @@ class Solution:
     'pkg'
   ]
 
+  SOLUTION_SOURCE_DIR = 'src'
+
   def __init__(self, dirname):
     dirname, filepath = self.__find_solution_file(dirname)
     if dirname is None:
@@ -442,7 +445,7 @@ class Solution:
       self.valid = True
 
   @classmethod
-  def init(self, dirpath):
+  def init(self, dirpath, url=None, projname=None):
     for d in self.SOLUTION_STRUCTURE:
       directory = '%s/%s' % (dirpath, d)
       if not os.path.exists(directory):
@@ -452,25 +455,58 @@ class Solution:
     if not os.path.exists(solution_path):
       save_config(solution_path, {})
 
-    return self(solution_path)
+    sol = self(solution_path)
+
+    print url, dirpath, sol, projname
+    if isinstance(url, basestring) and len(url) > 0:
+      sol.init_project_by_url(url=url, projname=projname)
+    elif isinstance(projname, basestring) and len(projname) > 0:
+      sol.init_project(dirname=projname, conf=None)
+
+    return sol
 
   def init_project(self, dirname, conf=None):
     if not self.valid:
       return False
-    path = '%s/%s' % (self.dirname, dirname)
+    path = '%s/%s/%s' % (self.dirname, self.__class__.SOLUTION_SOURCE_DIR, dirname)
     if not os.path.exists('%s/.goproj' % path):
-      os.makedirs(path)
+      if not os.path.exists(path):
+        os.makedirs(path)
       if conf is None or not ('hg' in conf and 'git' in conf):
-        Project.init(path, dirname)
+        Project.init(solutionpath=self.dirname, projdir=path, projectname=dirname)
       elif 'hg' in conf:
-        os.system('cd %s\nhg clone %s' % (path, conf['hg']))
+        com = 'cd %s && hg clone %s' % (path, conf['hg'])
+        out(com)
+        os.system(com)
       else: # git in conf
-        os.system('cd %s\ngit clone %s' % (path, conf['git']))
+        com = 'cd %s && git clone %s' % (path, conf['git'])
+        out(com)
+        os.system(com)
       if not os.path.exists('%s/.goproj' % path):
         return False
       self.apps[dirname] = conf
       save_config(self.solution_path, self.apps)
     return True
+
+  def init_project_by_url(self, url, projname):
+    if not self.valid:
+      return False
+    u = urlparse(url)
+    conf = {}
+    if not projname or len(projname) < 1:
+      domain = u.netloc.split(':')[0]
+      projname = '%s/%s' % (domain, u.query)
+      if projname.endswith('.git'):
+        projname = projname[:-4]
+      elif projname.endswith('.hg'):
+        projname = projname[:-3]
+    if u.scheme == 'hg':
+      conf['hg'] = 'https://%s/%s?%s' % (u.netloc, u.query, u.query)
+    if u.scheme in ['http', 'https']:
+      conf['git'] = url
+    elif u.scheme == 'git':
+      conf['git'] = 'https://%s/%s?%s' % (u.netloc, u.query, u.query)
+    return self.init_project(projname)
 
   #############################################################################
   ### Getters/Setters
@@ -613,11 +649,18 @@ class Go:
     return Project(os.getcwd())
 
   @classmethod
+  def solution(self):
+    return Solution(os.getcwd())
+
+  @classmethod
   def run(self, action, args):
     if 'init' == action:
-      subdir = args[0] if len(args) > 1 else None
-      projectname = args[1] if len(args) > 1 else args[0]
-      Project.init(dirpath=os.getcwd(), projectname=projectname, subdir=subdir)
+      subdir = args[0] if len(args) >= 1 else None
+      url = args[0] if len(args) >= 1 else None
+      projname = args[1] if len(args) > 1 else None
+      print 'args', args
+      # Project.init(dirpath=os.getcwd(), projectname=projname, subdir=subdir)
+      Solution.init(dirpath=os.getcwd(), url=url, projname=projname)
     else:
       words, flags = self.command_line_prepare(args)
       if 'deps' == action:
