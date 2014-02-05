@@ -60,7 +60,7 @@ def load_config(filepath):
   return None
 
 def save_config(filepath, conf):
-  with open(filepath, 'w') as file:
+  with open(filepath, 'w+') as file:
     file.write(json.dumps(conf))
 
 def key_as_array(dictionary, keys):
@@ -272,8 +272,11 @@ class Project:
 
     projectpath = "%s/%s" % (solutionpath, projdir)
     config_path = "%s/.goproj" % projectpath
-    goproj = open(config_path, "w")
-    goproj.write(self.PROJECT_FILE.format(projectname=projectname, solutionpath=solutionpath, projectpath=projectpath))
+    print "CONFIG_PATH:", config_path
+    goproj = open(config_path, "w+")
+    # goproj.write(self.PROJECT_FILE.format(projectname=projectname, solutionpath=solutionpath, projectpath=projectpath))
+    repls = {'{projectname}': projectname, '{solutionpath}': solutionpath, '{projectpath}': projectpath}
+    goproj.write(reduce(lambda a, kv: a.replace(*kv), repls.iteritems(), self.PROJECT_FILE))
     goproj.close()
 
     return self(config_path)
@@ -468,21 +471,25 @@ class Solution:
   def init_project(self, dirname, conf=None):
     if not self.valid:
       return False
-    path = '%s/%s/%s' % (self.dirname, self.__class__.SOLUTION_SOURCE_DIR, dirname)
-    if not os.path.exists('%s/.goproj' % path):
-      if not os.path.exists(path):
-        os.makedirs(path)
+    path = '%s/%s' % (self.__class__.SOLUTION_SOURCE_DIR, dirname)
+    full_path = '%s/%s' % (self.dirname, path)
+    print "PATH:", path
+    if conf is None:
+      conf = {}
+    if not os.path.exists('%s/.goproj' % full_path):
+      if not os.path.exists(full_path):
+        os.makedirs(full_path)
       if conf is None or not ('hg' in conf and 'git' in conf):
         Project.init(solutionpath=self.dirname, projdir=path, projectname=dirname)
       elif 'hg' in conf:
-        com = 'cd %s && hg clone %s' % (path, conf['hg'])
+        com = 'cd %s && hg clone %s' % (full_path, conf['hg'])
         out(com)
         os.system(com)
       else: # git in conf
-        com = 'cd %s && git clone %s' % (path, conf['git'])
+        com = 'cd %s && git clone %s' % (full_path, conf['git'])
         out(com)
         os.system(com)
-      if not os.path.exists('%s/.goproj' % path):
+      if not os.path.exists('%s/.goproj' % full_path):
         return False
       self.apps[dirname] = conf
       save_config(self.solution_path, self.apps)
@@ -495,18 +502,19 @@ class Solution:
     conf = {}
     if not projname or len(projname) < 1:
       domain = u.netloc.split(':')[0]
-      projname = '%s/%s' % (domain, u.query)
+      projname = '%s/%s' % (domain, u.path)
+      print "PROJNAME:", projname
       if projname.endswith('.git'):
         projname = projname[:-4]
       elif projname.endswith('.hg'):
         projname = projname[:-3]
     if u.scheme == 'hg':
-      conf['hg'] = 'https://%s/%s?%s' % (u.netloc, u.query, u.query)
+      conf['hg'] = 'https://%s/%s?%s' % (u.netloc, u.path, u.query)
     if u.scheme in ['http', 'https']:
       conf['git'] = url
     elif u.scheme == 'git':
-      conf['git'] = 'https://%s/%s?%s' % (u.netloc, u.query, u.query)
-    return self.init_project(projname)
+      conf['git'] = 'https://%s/%s?%s' % (u.netloc, u.path, u.query)
+    return self.init_project(projname, conf)
 
   #############################################################################
   ### Getters/Setters
