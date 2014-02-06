@@ -96,7 +96,7 @@ class Config:
       self.load(confpath)
 
   def load(self, confpath):
-    if confpath is None:
+    if confpath is None or not os.path.isfile(confpath):
       return self
 
     jdata = load_config(confpath)
@@ -262,7 +262,12 @@ class Project:
 """
 
   def __init__(self, config):
-    self.config = config if isinstance(config, Config) else Config('%s/.goproj' % config)
+    if isinstance(config, Config):
+      self.config = config
+    elif not config.endswith('.goproj'):
+      self.config = Config('%s/.goproj' % config)
+    else:
+      self.config = Config(config)
 
   @classmethod
   def init(self, solutionpath, projdir, projectname):
@@ -272,7 +277,6 @@ class Project:
 
     projectpath = "%s/%s" % (solutionpath, projdir)
     config_path = "%s/.goproj" % projectpath
-    print "CONFIG_PATH:", config_path
     goproj = open(config_path, "w+")
     # goproj.write(self.PROJECT_FILE.format(projectname=projectname, solutionpath=solutionpath, projectpath=projectpath))
     repls = {'{projectname}': projectname, '{solutionpath}': solutionpath, '{projectpath}': projectpath}
@@ -438,11 +442,13 @@ class Solution:
   SOLUTION_SOURCE_DIR = 'src'
 
   def __init__(self, dirname):
+    print 'dirname', dirname
     dirname, filepath = self.__find_solution_file(dirname)
+    print "dirname, filepath", dirname, filepath
     if dirname is None:
       self.valid = False
     else:
-      self.dirname = dirname
+      self.dirname = dirname.replace("//", "/")
       self.filepath = filepath
       self.apps = load_config(filepath)
       self.valid = True
@@ -471,28 +477,29 @@ class Solution:
   def init_project(self, dirname, conf=None):
     if not self.valid:
       return False
+    dirname = dirname.replace("//", "/")
     path = '%s/%s' % (self.__class__.SOLUTION_SOURCE_DIR, dirname)
     full_path = '%s/%s' % (self.dirname, path)
-    print "PATH:", path
+    print "PATH:", path, conf
     if conf is None:
       conf = {}
     if not os.path.exists('%s/.goproj' % full_path):
       if not os.path.exists(full_path):
         os.makedirs(full_path)
-      if conf is None or not ('hg' in conf and 'git' in conf):
+      if conf is None or not (conf.has_key('hg') or conf.has_key('git')):
         Project.init(solutionpath=self.dirname, projdir=path, projectname=dirname)
       elif 'hg' in conf:
-        com = 'cd %s && hg clone %s' % (full_path, conf['hg'])
+        com = 'hg clone "%s" "%s"' % (conf['hg'], full_path)
         out(com)
         os.system(com)
       else: # git in conf
-        com = 'cd %s && git clone %s' % (full_path, conf['git'])
+        com = 'git clone "%s" "%s"' % (conf['git'], full_path)
         out(com)
         os.system(com)
       if not os.path.exists('%s/.goproj' % full_path):
         return False
       self.apps[dirname] = conf
-      save_config(self.solution_path, self.apps)
+      save_config(self.filepath, self.apps)
     return True
 
   def init_project_by_url(self, url, projname):
@@ -500,20 +507,25 @@ class Solution:
       return False
     u = urlparse(url)
     conf = {}
+    # Prepare project dir name
     if not projname or len(projname) < 1:
       domain = u.netloc.split(':')[0]
       projname = '%s/%s' % (domain, u.path)
-      print "PROJNAME:", projname
       if projname.endswith('.git'):
         projname = projname[:-4]
       elif projname.endswith('.hg'):
         projname = projname[:-3]
+    # configure url
     if u.scheme == 'hg':
       conf['hg'] = 'https://%s/%s?%s' % (u.netloc, u.path, u.query)
     if u.scheme in ['http', 'https']:
-      conf['git'] = url
+      if u.path.endswith('.hg'):
+        conf['hg'] = url
+      else:
+        conf['git'] = url
     elif u.scheme == 'git':
       conf['git'] = 'https://%s/%s?%s' % (u.netloc, u.path, u.query)
+    # Init project
     return self.init_project(projname, conf)
 
   #############################################################################
@@ -522,11 +534,11 @@ class Solution:
 
   @property
   def projects(self):
-    if hasattr(self, 'project_list'):
+    if hasattr(self, 'project_list') and self.project_list:
       return self.project_list
     self.project_list = {}
     for app in self.apps:
-      self.project_list[app] = Project('%s/%s' % (os.getcwd(), app))
+      self.project_list[app] = Project('%s/%s/%s' % (self.dirname, self.__class__.SOLUTION_SOURCE_DIR, app))
     return self.project_list
 
   #############################################################################
@@ -534,55 +546,69 @@ class Solution:
   #############################################################################
 
   def get(self, apps=None, args=None):
-    return self.execute('get', args, args, dependencies=True)
+    for p in self.projects.values():
+      p.get(apps, args)
+    return self
 
   def build(self, apps, args=None):
-    if not args or len(args) < 1:
-      args = self.config.BUILD
-    return self.execute('build', apps, args)
+    for p in self.projects.values():
+      p.build(apps, args)
+    return self
 
   def install(self, apps=None, args=None):
-    return self.execute('install', apps, args, dependencies=True)
+    for p in self.projects.values():
+      p.install(apps, args)
+    return self
 
   def clean(self, args=None):
-    return self.exect('clean', args)
+    for p in self.projects.values():
+      p.clean(args)
+    return self
 
   def run(self, apps=None, args=None):
-    return self.execute('run', apps, args, custom_only=True)
+    for p in self.projects.values():
+      p.run(apps, args)
+    return self
 
   def fmt(self, apps=None, args=None):
-    return self.execute('fmt', apps, args)
+    for p in self.projects.values():
+      p.fmt(apps, args)
+    return self
 
   def fix(self, apps=None, args=None):
-    return self.execute('fix', apps, args)
+    for p in self.projects.values():
+      p.fix(apps, args)
+    return self
 
   def vet(self, apps=None, args=None):
-    return self.execute('vet', apps, args)
+    for p in self.projects.values():
+      p.vet(apps, args)
+    return self
 
   def doc(self, apps=None, args=None):
-    return self.execute('doc', apps, args)
+    for p in self.projects.values():
+      p.doc(apps, args)
+    return self
 
   def tool(self, args=None):
-    return self.exect('tool', args)
+    for p in self.projects.values():
+      p.tool(args)
+    return self
 
   def test(self, apps, flags=None):
-    return self.execute('test', apps, flags if flags and len(flags) > 0 else ['-v'])
+    for p in self.projects.values():
+      p.test(apps, args)
+    return self
 
   def print_deps(self):
-    deps = self.config.deps()
-    if deps and len(deps)>0:
-      for dep in deps:
-        out(dep)
-    else:
-      out('No dependencies')
+    for p in self.projects.values():
+      p.print_deps()
+    return self
 
   def print_apps(self):
-    apps = self.config.apps()
-    if apps and len(apps)>0:
-      for app in apps:
-        out(app)
-    else:
-      out('No applications')
+    for p in self.projects.values():
+      p.print_apps()
+    return self
 
   def print_env(self):
     next(self.projects.itervalues()).print_env()
@@ -609,7 +635,7 @@ class Solution:
       return os.path.dirname(dir), os.path.realpath(dir)
 
     if not filenames:
-      filenames = ['.solution']
+      filenames = ['.gosolution']
     elif isinstance(filenames, basestring):
       filenames = [filenames]
 
@@ -653,10 +679,6 @@ class Go:
   }
 
   @classmethod
-  def proj(self):
-    return Project(os.getcwd())
-
-  @classmethod
   def solution(self):
     return Solution(os.getcwd())
 
@@ -672,40 +694,40 @@ class Go:
     else:
       words, flags = self.command_line_prepare(args)
       if 'deps' == action:
-        self.proj().print_deps()
+        self.solution().print_deps()
       elif 'list' == action:
-        self.proj().print_apps()
+        self.solution().print_apps()
       elif action == 'get':
-        self.proj().get(words, flags)
+        self.solution().get(words, flags)
       elif 'build' == action:
-        self.proj().build(words, flags)
+        self.solution().build(words, flags)
       elif 'install' == action:
-        self.proj().install(words, flags)
+        self.solution().install(words, flags)
       elif 'clean' == action:
-        self.proj().clean(args)
+        self.solution().clean(args)
       elif 'run' == action:
-        self.proj().run(words, flags)
+        self.solution().run(words, flags)
       elif 'fmt' == action:
-        self.proj().fmt(words, flags)
+        self.solution().fmt(words, flags)
       elif 'fix' == action:
-        self.proj().fix(words, flags)
+        self.solution().fix(words, flags)
       elif 'test' == action:
-        self.proj().test(words, flags)
+        self.solution().test(words, flags)
       elif 'vet' == action:
-        self.proj().vet(words, flags)
+        self.solution().vet(words, flags)
       elif 'doc' == action:
-        self.proj().doc(words, flags)
+        self.solution().doc(words, flags)
       elif 'tool' == action:
-        self.proj().tool(args)
+        self.solution().tool(args)
       elif 'info' == action:
-        self.proj().print_env()
+        self.solution().print_env()
       elif 'go' == action:
-        self.proj().print_go_path()
+        self.solution().print_go_path()
       elif 'version' == action:
         print('goproj version %s %s %s' % (__version__, __autor__, __year__))
       elif 'help' == action:
         if len(args)>0:
-          self.proj().help('help', conf, args)
+          self.solution().help('help', conf, args)
         else:
           self.print_help()
       else:
