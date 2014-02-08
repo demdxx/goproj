@@ -75,6 +75,32 @@ def key_as_array(dictionary, keys):
 def out(str):
   print(str)
 
+def find_first_parent_file(dir, filenames=None):
+  """
+  Find solution ile, recursion up to tree
+  @param current dir path
+  @param filenames string or array name variants
+  @return (projectdir, absfilepath)
+  """
+  if not dir or not filenames:
+    return None, None
+
+  if os.path.isfile(dir):
+    return os.path.dirname(dir), os.path.realpath(dir)
+
+  if isinstance(filenames, basestring):
+    filenames = [filenames]
+
+  for fname in filenames:
+    pathname = '%s/%s' % (dir, fname)
+    if os.path.isfile(pathname) or os.path.islink(pathname):
+      return dir, os.path.realpath(pathname)
+
+  if len(dir)<1 or dir=='/':
+    return None, None
+
+  return find_first_parent_file(dir=os.path.dirname(dir), filenames=filenames)
+
 ###############################################################################
 ### Go Project Config
 ###############################################################################
@@ -83,11 +109,11 @@ class Config:
 
   def __init__(self, confpath=None):
     self.inited = False
+    self.APPNAME = None
     self.SOLUTIONDIR = None
     self.DIRNAME = None
     self.CONFIGPATH = None
     self.DEPS = []
-    self.APP = {}
     self.BUILD = []
     self.ENVIRON = {}
     self.GO = self.__class__.__go()
@@ -107,7 +133,8 @@ class Config:
 
     self.CONFIGPATH = confpath
     self.DIRNAME = os.path.dirname(confpath)
-    self.SOLUTIONDIR = os.path.dirname(os.path.dirname(self.DIRNAME))
+    self.SOLUTIONDIR = self.__class__.solutiondir(self.DIRNAME)
+    self.APPNAME = self.DIRNAME[len(self.SOLUTIONDIR)+5:]
 
     self.ENVIRON['GOOS'] = jdata.get('os', None)
     self.ENVIRON['GOARCH'] = jdata.get('arch', None)
@@ -116,6 +143,7 @@ class Config:
     self.APP = self.CONF.copy()
     self.APP.pop('deps', None)
     self.APP.pop('dependings', None)
+    self.APP.pop('env', None)
 
     # Custom enviroment
     env = jdata.get('env', None)
@@ -134,10 +162,10 @@ class Config:
       return False
 
     # Search go path dirs
-    os.environ['GOPATH'] = self.__gopath()
+    os.environ['GOPATH'] = self.SOLUTIONDIR
 
     # Add project path
-    os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.DIRNAME)
+    os.environ['PATH'] = '%s:%s/bin' % (os.environ['PATH'], self.SOLUTIONDIR)
 
     # Init enviroments
     env = self.environ(appname)
@@ -169,14 +197,18 @@ class Config:
 
   def gopath(self):
     if not hasattr(self, 'GOPATH'):
-      self.GOPATH = self.__gopath()
+      self.GOPATH = self.SOLUTIONDIR
     return self.GOPATH
 
   def deps(self):
     return self.DEPS
 
   def apps(self):
-    return self.APP.copy().update(self.DEPS)
+    if not hasattr(self, 'APPS') or not self.APPS:
+      self.APPS = self.__class__.__prepare_apps({self.APPNAME: self.APP})
+    apps = self.APPS.copy()
+    apps.update(self.DEPS)
+    return apps
 
   def arch(self):
     return self.ENVIRON.get('GOARCH', 'arm' if self.ENVIRON.get('GOARM', None) else None)
@@ -199,6 +231,11 @@ class Config:
 
   def prepare_path(self, path):
     return path.format(projectpath=self.DIRNAME)
+
+  @staticmethod
+  def solutiondir(path):
+    dirpath, _conf = find_first_parent_file(dir=path, filenames=['.gosolution'])
+    return dirpath
 
   def __gopath(self):
     GOPATH = self.DIRNAME
@@ -326,7 +363,7 @@ class Project:
           elif not custom_only:
             cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         else:
-          cmd = '%s %s %s' % (self.config.go(), command, ' '.join(args))
+          cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         if cmd:
           out(cmd)
           os.system(cmd)
@@ -407,7 +444,7 @@ class Project:
         if isinstance(v, dict):
           for k2, v2 in v.items():
             if v2:
-              print("export %s=%s" % (k2, v2))
+              out("export %s=%s" % (k2, v2))
         elif v:
           for v2 in v:
             if v2:
@@ -427,6 +464,17 @@ class Project:
       out("I can't initialize the environment")
       exit(-1)
 
+  @staticmethod
+  def __get_app(key, apps):
+    if not key or not apps:
+      return None
+    if key in apps:
+      return apps[key]
+    for k in apps:
+      if len(k) < len(key) and k == key[0:len(k)]:
+        return key[len(k):], k, apps[key]
+    return None
+
 
 ###############################################################################
 ### Solution config
@@ -442,9 +490,7 @@ class Solution:
   SOLUTION_SOURCE_DIR = 'src'
 
   def __init__(self, dirname):
-    print 'dirname', dirname
     dirname, filepath = self.__find_solution_file(dirname)
-    print "dirname, filepath", dirname, filepath
     if dirname is None:
       self.valid = False
     else:
@@ -466,7 +512,6 @@ class Solution:
 
     sol = self(solution_path)
 
-    print url, dirpath, sol, projname
     if isinstance(url, basestring) and len(url) > 0:
       sol.init_project_by_url(url=url, projname=projname)
     elif isinstance(projname, basestring) and len(projname) > 0:
@@ -480,7 +525,6 @@ class Solution:
     dirname = dirname.replace("//", "/")
     path = '%s/%s' % (self.__class__.SOLUTION_SOURCE_DIR, dirname)
     full_path = '%s/%s' % (self.dirname, path)
-    print "PATH:", path, conf
     if conf is None:
       conf = {}
     if not os.path.exists('%s/.goproj' % full_path):
@@ -509,7 +553,7 @@ class Solution:
     conf = {}
     # Prepare project dir name
     if not projname or len(projname) < 1:
-      domain = u.netloc.split(':')[0]
+      domain = u.netloc.split('@')[-1].split(':')[0]
       projname = '%s/%s' % (domain, u.path)
       if projname.endswith('.git'):
         projname = projname[:-4]
@@ -597,7 +641,7 @@ class Solution:
 
   def test(self, apps, flags=None):
     for p in self.projects.values():
-      p.test(apps, args)
+      p.test(apps, flags)
     return self
 
   def print_deps(self):
@@ -622,32 +666,15 @@ class Solution:
 
   @classmethod
   def __find_solution_file(klass, dir, filenames=None):
-    """
-    Find solution file config, recursion up to tree
-    @param current dir path
-    @param filenames string or array name variants
-    @return (projectdir, absfilepath)
-    """
     if not dir:
       return None, None
-
-    if os.path.isfile(dir):
-      return os.path.dirname(dir), os.path.realpath(dir)
 
     if not filenames:
       filenames = ['.gosolution']
     elif isinstance(filenames, basestring):
       filenames = [filenames]
 
-    for fname in filenames:
-      pathname = '%s/%s' % (dir, fname)
-      if os.path.isfile(pathname) or os.path.islink(pathname):
-        return dir, os.path.realpath(pathname)
-
-    if len(dir)<1 or dir=='/':
-      return None, None
-
-    return klass.__find_solution_file(dir=os.path.dirname(dir), filenames=filenames)
+    return find_first_parent_file(dir=dir, filenames=filenames)
 
 ###############################################################################
 ### Main Console Programm
@@ -688,7 +715,6 @@ class Go:
       subdir = args[0] if len(args) >= 1 else None
       url = args[0] if len(args) >= 1 else None
       projname = args[1] if len(args) > 1 else None
-      print 'args', args
       # Project.init(dirpath=os.getcwd(), projectname=projname, subdir=subdir)
       Solution.init(dirpath=os.getcwd(), url=url, projname=projname)
     else:
@@ -724,14 +750,13 @@ class Go:
       elif 'go' == action:
         self.solution().print_go_path()
       elif 'version' == action:
-        print('goproj version %s %s %s' % (__version__, __autor__, __year__))
+        out('goproj version %s %s %s' % (__version__, __autor__, __year__))
       elif 'help' == action:
         if len(args)>0:
           self.solution().help('help', conf, args)
         else:
           self.print_help()
       else:
-        print 100
         self.print_help()
 
   @classmethod
