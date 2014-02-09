@@ -316,7 +316,7 @@ class Project:
     config_path = "%s/.goproj" % projectpath
     goproj = open(config_path, "w+")
     # goproj.write(self.PROJECT_FILE.format(projectname=projectname, solutionpath=solutionpath, projectpath=projectpath))
-    repls = {'{projectname}': projectname, '{solutionpath}': solutionpath, '{projectpath}': projectpath}
+    repls = {'{projectname}': projectname, '{projectpath}': projectpath}
     goproj.write(reduce(lambda a, kv: a.replace(*kv), repls.iteritems(), self.PROJECT_FILE))
     goproj.close()
 
@@ -333,9 +333,8 @@ class Project:
     @param args
     """
     self.set_env()
-    cmd = '%s %s %s' % (self.config.go(), command, ' '.join(args or []))
-    out(cmd)
-    os.system(cmd)
+    cmd = ('%s %s %s' % (self.config.go(), command, ' '.join(args or []))).format(solutionpath=self.config.SOLUTIONDIR)
+    out(cmd); os.system(cmd)
 
   def execute(self, command, apps, args=None, custom_only=False, dependencies=False):
     """
@@ -359,26 +358,28 @@ class Project:
           if command in params:
             s_cmd = params[command]
             if s_cmd:
-              cmd = s_cmd.format(go=self.config.go(), cmd=command, app=app)
+              cmd = s_cmd
           elif not custom_only:
             cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         else:
           cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         if cmd:
-          out(cmd)
-          os.system(cmd)
+          cmd = cmd.format(go=self.config.go(), cmd=command, app=app, solutionpath=self.config.SOLUTIONDIR)
+          out(cmd); os.system(cmd)
+        # else: unfortunately
     else:
       for app, params in lapps.items():
         cmd = None
         if params and command in params:
           s_cmd = params[command]
           if s_cmd:
-            cmd = s_cmd.format(go=self.config.go(), cmd=command, app=app)
+            cmd = s_cmd
         elif not custom_only:
           cmd = '%s %s %s %s' % (self.config.go(), command, ' '.join(args), app)
         if cmd:
-          out(cmd)
-          os.system(cmd)
+          cmd = cmd.format(go=self.config.go(), cmd=command, app=app, solutionpath=self.config.SOLUTIONDIR)
+          out(cmd); os.system(cmd)
+        #else: unfortunately
     return self
 
   def get(self, apps=None, args=None):
