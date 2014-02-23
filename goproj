@@ -382,8 +382,11 @@ class Project:
         #else: unfortunately
     return self
 
+  def raw(self, command, args):
+    return self.exect(command, args)
+
   def get(self, apps=None, args=None):
-    return self.execute('get', args, args, dependencies=True)
+    return self.execute('get', apps, args, dependencies=True)
 
   def build(self, apps, args=None):
     if not args or len(args) < 1:
@@ -590,6 +593,11 @@ class Solution:
   ### Commands
   #############################################################################
 
+  def raw(self, command, args=None):
+    for p in self.projects.values():
+      p.raw(command, args)
+    return self
+
   def get(self, apps=None, args=None):
     for p in self.projects.values():
       p.get(apps, args)
@@ -733,7 +741,10 @@ class Go:
       elif 'clean' == action:
         self.solution().clean(args)
       elif 'run' == action:
-        self.solution().run(words, flags)
+        if len(args) > 0 and args[0].endswith('.go'):
+          self.solution().raw('run', args)
+        else:
+          self.solution().run(words, args)
       elif 'fmt' == action:
         self.solution().fmt(words, flags)
       elif 'fix' == action:
