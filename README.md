@@ -63,7 +63,7 @@ sudo cp goproj /usr/local/bin/
 
 ## Using
 
-All commands are needed packages automatically, so this option can be omitted. Start any commands can be from any podkotalaga project, all settings are set automatically.
+All commands are needed packages automatically, so this option can be omitted. Start any commands can be from any subcatalog of project, all settings are set automatically.
 
 ### Init new project
 ```sh
