@@ -389,8 +389,6 @@ class Project:
     return self.execute('get', apps, args, dependencies=True)
 
   def build(self, apps, args=None):
-    if not args or len(args) < 1:
-      args = self.config.BUILD
     return self.execute('build', apps, args)
 
   def install(self, apps=None, args=None):
@@ -441,7 +439,10 @@ class Project:
 
     out("PATH=%s" % os.environ['PATH'])
     out("GO=%s" % self.config.go())
-    out("GOPATH=%s" % os.environ['GOPATH'])
+    if 'GOPATH' in os.environ:
+      out("GOPATH=%s" % os.environ['GOPATH'])
+    else:
+      out("GOPATH=%s" % self.config.SOLUTIONDIR)
 
     for k, v in self.config.environ().items():
       if 'ENV' == k:
