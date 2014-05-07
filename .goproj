@@ -1,4 +1,10 @@
 {
   "project": "goproj",
   "version": "2.0.0",
+
+  "run": "{go} run src/{app}/main.go",
+
+  "deps": {
+    "gopkg.in/v1/yaml": {"build": False}
+  }
 }
