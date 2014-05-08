@@ -28,7 +28,7 @@ func (sol Solution) Init() error {
 
   // Each config
   for dir, conf := range sol.Config {
-    proj, err := ProjectFromFile(dir + "/.goproj")
+    proj, err := ProjectFromFile(dir, conf.(Config))
     if nil == err {
       err = sol.AddProject(proj)
     }
@@ -45,4 +45,10 @@ func (sol Solution) AddProject(p *Project) error {
   }
   sol.Projects = append(sol.Projects, p)
   return nil
+}
+
+/// Other
+
+func FindSolutionFrom(dir string) (string, error) {
+  return findParentDirWithFile(sir, ".gosolution")
 }

@@ -47,7 +47,7 @@ func main() {
   fmt.Println(flag.Args())
 
   if flag.NArg() > 0 {
-    switch flag.Arg(0) {
+    switch os.Args[1] {
     case "init":
     case "deps":
     case "list":

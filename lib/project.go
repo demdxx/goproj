@@ -10,12 +10,15 @@ type Project struct {
   Deps []*Dependency
 }
 
-func ProjectFromFile(filepath string) (proj *Project, err error) {
-  proj = &Project{}
-  if err = proj.Config.InitFromFile(filepath); nil != err {
+func ProjectFromFile(path string, conf Config) (proj *Project, err error) {
+  proj = &Project{Dependency: Dependency{Path: path}}
+  if err = proj.Config.InitFromFile(path + "/.goproj"); nil != err {
     proj = nil
     return
   }
+
+  // Merge local and global config
+  proj.Config.Update(conf)
   err = proj.Init()
   return
 }
@@ -92,6 +95,12 @@ func (proj Project) addDependencyByConfig(url string, conf Config) {
   if nil == proj.Deps {
     proj.Deps = make([]*Dependency, 0)
   }
-  dep := &Dependency{Url: url, Config: conf}
+
+  // Update config
+  var config Config
+  config.Update(conf, true)
+
+  // Init project
+  dep := &Dependency{Url: url, Config: config}
   proj.Deps = append(proj.Deps, dep)
 }

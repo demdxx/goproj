@@ -11,7 +11,7 @@ import (
 
 type Config map[string]interface{}
 
-func (conf Config) InitFromFile(filepath string) (err error) {
+func (conf *Config) InitFromFile(filepath string) (err error) {
   file, err := os.Open(filepath)
   if err != nil {
     return
@@ -41,4 +41,16 @@ func (conf Config) InitFromFile(filepath string) (err error) {
     }
   }
   return
+}
+
+func (conf *Config) Update(c Config, rewrite bool) {
+  if nil != conf {
+    for k, v := range conf {
+      if rewrite {
+        proj.Config[k] = v
+      } else if _, ok := proj.Config[k]; !ok {
+        proj.Config[k] = v
+      }
+    }
+  }
 }
