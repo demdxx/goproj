@@ -4,7 +4,11 @@
 package main
 
 import (
+  "flag"
   "fmt"
+  "goproj/lib"
+  "os"
+  "strings"
 )
 
 const version = "2.0.0"
@@ -31,15 +35,40 @@ var help = map[string]string{
   "help":    "show help or help [command]",
 }
 
-func main() {
-  printHelp()
+func init() {
+  for k, v := range help {
+    flag.Set(k, v)
+  }
+  flag.Usage = printHelp
 }
 
+func main() {
+  flag.Parse()
+  fmt.Println(flag.Args())
+
+  if flag.NArg() > 0 {
+    switch flag.Arg(0) {
+    case "init":
+    case "deps":
+    case "list":
+    case "go":
+      lib.GoRun(os.Args[2:]...)
+    }
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///////////////////////////////////////////////////////////////////////////////
+
 func printHelp() {
-  fmt.Printf("Goproj %s %s\n", version, author)
-  fmt.Print("================================================\n")
+  header := fmt.Sprintf("Goproj %s %s", version, author)
+  fmt.Printf("%s\n%s\n", header, strings.Repeat("=", len(header)))
 
   for k, v := range help {
-    fmt.Printf("% 10s: %s\n", k, v)
+    fmt.Printf("% 10s - %s\n", k, v)
   }
+
+  fmt.Print("\n")
+  flag.PrintDefaults()
 }

@@ -1,4 +1,13 @@
-package goproj
+package lib
+
+import (
+  "bufio"
+  "bytes"
+  "encoding/json"
+  "gopkg.in/v1/yaml"
+  "io"
+  "os"
+)
 
 type Config map[string]interface{}
 
@@ -11,9 +20,10 @@ func (conf Config) InitFromFile(filepath string) (err error) {
 
   // Load file
   reader := bufio.NewReader(file)
-  buffer := bytes.NewBuffer()
+  var buffer bytes.Buffer
+  var part []byte
   for {
-    if part, prefix, err = reader.ReadLine(); err != nil {
+    if part, _, err = reader.ReadLine(); err != nil {
       break
     }
     buffer.Write(part)
@@ -27,7 +37,7 @@ func (conf Config) InitFromFile(filepath string) (err error) {
     if '{' == data[0] {
       err = json.Unmarshal(data, &conf)
     } else {
-      err = yuml.Unmarshal(data, &conf)
+      err = yaml.Unmarshal(data, &conf)
     }
   }
   return
