@@ -16,7 +16,7 @@ type goProc struct {
 }
 
 func (g *goProc) init() {
-  g.Path = "go"
+  g.Path = "go" // TODO detect `go` path
 }
 
 func (g goProc) run(args ...string) (err error) {

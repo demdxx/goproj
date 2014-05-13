@@ -35,3 +35,28 @@ func findParentDirWithFile(dir, name string) (string, error) {
   }
   return "", errors.New(fmt.Sprintf("%s doesn't exists", name))
 }
+
+func isDir(fullpath string) (bool, error) {
+  info, err := os.Stat(fullpath)
+  if err == nil && info.IsDir() {
+    return true, nil
+  }
+  return false, err
+}
+
+func isFile(fullpath string) (bool, error) {
+  res, err := isDir(fullpath)
+  if nil == err {
+    return !res, err
+  }
+  return res, err
+}
+
+func makeDir(fullpath string) error {
+  if info, err := os.Stat(fullpath); nil == info && err != nil {
+    if err = os.MkdirAll(fullpath, 0755); nil != err {
+      return err
+    }
+  }
+  return nil
+}

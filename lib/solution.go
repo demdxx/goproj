@@ -8,6 +8,7 @@ package lib
 
 import (
   "errors"
+  "fmt"
 )
 
 type Solution struct {
@@ -23,7 +24,7 @@ func SolutionFromFile(filepath string) (sol *Solution, err error) {
   return
 }
 
-func (sol Solution) Init() error {
+func (sol *Solution) Init() error {
   if nil == sol.Config || len(sol.Config) < 1 {
     return errors.New("Project not inited")
   }
@@ -45,7 +46,7 @@ func (sol Solution) Init() error {
   return nil
 }
 
-func (sol Solution) AddProject(p *Project) error {
+func (sol *Solution) AddProject(p *Project) error {
   if nil == sol.Projects {
     sol.Projects = make([]*Project, 0)
   }
@@ -53,8 +54,44 @@ func (sol Solution) AddProject(p *Project) error {
   return nil
 }
 
+// Init FS struct
+//
+// bin/
+// pkg/
+// src/
+// .gosolution
+func (sol *Solution) InitFileStruct() error {
+  if len(sol.Path) < 1 {
+    return errors.New("Solution path not defined")
+  }
+  if err := makeDir(sol.Path); nil != err {
+    return err
+  }
+
+  // Create dirs
+  if err := makeDir(fmt.Sprintf("%s/bin", sol.Path)); nil != err {
+    return err
+  }
+  path = fmt.Sprintf("%s/bin", sol.Path)
+  if err := makeDir(fmt.Sprintf("%s/pkg", sol.Path)); nil != err {
+    return err
+  }
+  if err := makeDir(fmt.Sprintf("%s/src", sol.Path)); nil != err {
+    return err
+  }
+
+  // Create solution
+  sol.SaveConfig()
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Other
+///////////////////////////////////////////////////////////////////////////////
 
 func FindSolutionFrom(dir string) (string, error) {
   return findParentDirWithFile(sir, ".gosolution")
+}
+
+func HasSolution(dir string) bool {
+  return isFile(fmt.Sprintf("%s/.gosolution", dir))
 }
