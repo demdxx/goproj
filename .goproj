@@ -1,6 +1,7 @@
 {
   "project": "goproj",
   "version": "2.0.0",
+  "license": "cc-by-4.0",
 
   "run": "{go} run src/{app}/main.go go help",
 
