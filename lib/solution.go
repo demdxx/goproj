@@ -9,6 +9,10 @@ package lib
 import (
   "errors"
   "fmt"
+  "gopkg.in/v1/yaml"
+  "io/ioutil"
+  "os"
+  "path/filepath"
 )
 
 type Solution struct {
@@ -17,14 +21,21 @@ type Solution struct {
   Config   Config
 }
 
-func SolutionFromFile(filepath string) (sol *Solution, err error) {
-  if err = sol.Config.InitFromFile(filepath); nil == err {
-    err = sol.Init()
+func SolutionFromFile(fpath string) (sol *Solution, err error) {
+  if err = sol.Config.InitFromFile(fpath); nil == err {
+    err = sol.Init(filepath.Dir(fpath))
   }
   return
 }
 
-func (sol *Solution) Init() error {
+func (sol *Solution) Init(path string) error {
+  if len(path) > 0 {
+    sol.Path, err = filepath.Abs(path)
+    if nil != err {
+      return err
+    }
+  }
+
   if nil == sol.Config || len(sol.Config) < 1 {
     return errors.New("Project not inited")
   }
@@ -43,14 +54,6 @@ func (sol *Solution) Init() error {
       return err
     }
   }
-  return nil
-}
-
-func (sol *Solution) AddProject(p *Project) error {
-  if nil == sol.Projects {
-    sol.Projects = make([]*Project, 0)
-  }
-  sol.Projects = append(sol.Projects, p)
   return nil
 }
 
@@ -81,7 +84,55 @@ func (sol *Solution) InitFileStruct() error {
   }
 
   // Create solution
-  sol.SaveConfig()
+  return sol.SaveConfig()
+}
+
+// Save soluton project
+//
+// @return nil or error
+func (sol *Solution) SaveConfig() error {
+  projects := make(map[string]interface{})
+
+  for _, p := range sol.Projects {
+    projects[p.Path] = map[string]interface{}{
+      "url": p.Url,
+    }
+  }
+
+  // Murshal config to YAML
+  data, err := yaml.Marshal(map[string]interface{}{
+    "projects": projects,
+  })
+  if nil != err {
+    return err
+  }
+
+  // Store file
+  return ioutil.WriteFile(fmt.Sprintf("%s/.gosolution", dir), data, os.FileMode)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Projects
+///////////////////////////////////////////////////////////////////////////////
+
+// Init solution projects by repos or crreate project structure
+//
+// @return nil or error
+func (sol *Solution) InitProjects() error {
+  for _, p := range sol.Projects {
+    if err := p.Init(); nil != err {
+      return err
+    }
+  }
+  return nil
+}
+
+func (sol *Solution) AddProject(p *Project) error {
+  if nil == sol.Projects {
+    sol.Projects = make([]*Project, 0)
+  }
+  sol.Projects = append(sol.Projects, p)
+  return nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
