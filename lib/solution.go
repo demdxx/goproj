@@ -13,6 +13,7 @@ import (
   "io/ioutil"
   "os"
   "path/filepath"
+  "strings"
 )
 
 type Solution struct {
@@ -26,13 +27,16 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
   ndir, err := FindSolutionDirFrom(dir)
   if nil != err {
     // We don't have .gosolution then check .goproj
-    pdir, err := findParentDirWithFile(sir, ".goproj")
+    pdir, err := findParentDirWithFile(dir, ".goproj")
     if nil != err {
       return nil, err
     }
 
     // Init global solution
-    if GOPATH, ok := os.Environ()["GOPATH"]; ok {
+    GOPATH := os.Getenv("GOPATH")
+    if len(GOPATH) < 1 {
+      err = errors.New("For global solution project need set enviroment GOPATH")
+    } else {
       err = nil
       sol := new(Solution)
       sol.IsGlobal = true
@@ -41,10 +45,10 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
       }
       return sol, sol.Init(GOPATH)
     }
+  } else {
+    // Init solution from file
+    sol, err = SolutionFromFile(fmt.Sprintf("%s/.gosolution", ndir))
   }
-
-  // Init solution from file
-  sol, err = SolutionFromFile(fmt.Sprintf("%s/.gosolution", ndir))
   return
 }
 
@@ -58,16 +62,17 @@ func SolutionFromFile(fpath string) (sol *Solution, err error) {
   return
 }
 
-func (sol *Solution) Init(path string) error {
+func (sol *Solution) Init(path string) (err error) {
   if len(path) > 0 {
     sol.Path, err = filepath.Abs(path)
     if nil != err {
-      return err
+      return
     }
   }
 
   if nil == sol.Config || len(sol.Config) < 1 {
-    return errors.New("Project not inited")
+    err = errors.New("Project not inited")
+    return
   }
 
   if nil != sol.Projects {
@@ -79,21 +84,23 @@ func (sol *Solution) Init(path string) error {
     if nil != projects {
       switch projects.(type) {
       case map[string]interface{}:
-        for dir, conf := range projects {
-          proj, err := ProjectFromFile(dir, conf.(Config))
+        for dir, conf := range projects.(map[string]interface{}) {
+          var proj *Project
+          proj, err = ProjectFromFile(dir, conf.(Config))
           if nil == err {
             err = sol.AddProject(proj)
           }
           if nil != err {
-            return err
+            return
           }
         }
       default:
-        return errors.New("Config has invalid format in conf.projects section")
+        err = errors.New("Config has invalid format in conf.projects section")
+        return
       }
     }
   }
-  return nil
+  return
 }
 
 // Init FS struct
@@ -114,7 +121,6 @@ func (sol *Solution) InitFileStruct() error {
   if err := makeDir(fmt.Sprintf("%s/bin", sol.Path)); nil != err {
     return err
   }
-  path = fmt.Sprintf("%s/bin", sol.Path)
   if err := makeDir(fmt.Sprintf("%s/pkg", sol.Path)); nil != err {
     return err
   }
@@ -147,7 +153,7 @@ func (sol *Solution) SaveConfig() error {
   }
 
   // Store file
-  return ioutil.WriteFile(fmt.Sprintf("%s/.gosolution", dir), data, os.FileMode)
+  return ioutil.WriteFile(fmt.Sprintf("%s/.gosolution", sol.Path), data, 0644)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -179,9 +185,35 @@ func (sol *Solution) AddProject(p *Project) error {
 ///////////////////////////////////////////////////////////////////////////////
 
 func FindSolutionDirFrom(dir string) (string, error) {
-  return findParentDirWithFile(sir, ".gosolution")
+  return findParentDirWithFile(dir, ".gosolution")
 }
 
 func HasSolution(dir string) bool {
-  return isFile(fmt.Sprintf("%s/.gosolution", dir))
+  b, _ := isFile(fmt.Sprintf("%s/.gosolution", dir))
+  return b
+}
+
+/**
+ * Get enviroment for solution or project dir
+ *
+ * @param dir path
+ * @return map{GOPATH,PATH,GO}
+ */
+func SolutionEnv(dir string) map[string]string {
+  var GOPATH, PATH string
+  PATH = os.Getenv("PATH")
+
+  sol, _ := SolutionFromDir(dir)
+  if nil != sol {
+    GOPATH = sol.Path
+    PATH = fmt.Sprintf("%s:%s/bin", PATH, strings.TrimRight(sol.Path, "/"))
+  } else {
+    GOPATH = os.Getenv("GOPATH")
+    PATH = fmt.Sprintf("%s:%s/bin", PATH, strings.TrimRight(GOPATH, "/"))
+  }
+  return map[string]string{
+    "GOPATH": GOPATH,
+    "PATH":   PATH,
+    "GO":     GoPath(),
+  }
 }

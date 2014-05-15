@@ -21,17 +21,17 @@ type Dependency struct {
 ///////////////////////////////////////////////////////////////////////////////
 
 // Get commands array
-func (d *Dependency) Cmds() []interface{} {
+func (d *Dependency) Cmds() map[string]interface{} {
   if cmds, ok := d.Config["cmd"]; ok {
-    return cmds.([]interface{})
+    return cmds.(map[string]interface{})
   }
   return nil
 }
 
-func (d *Dependency) Cmd(name, def string) string {
+func (d *Dependency) Cmd(name, def string) interface{} {
   if cmds := d.Cmds(); nil != cmds {
-    if cmd, ok := cmds; ok {
-      return cmd.(string)
+    if cmd, ok := cmds[name]; ok {
+      return cmd
     }
   }
   return def
@@ -40,18 +40,18 @@ func (d *Dependency) Cmd(name, def string) string {
 // Shortcuts...
 
 // @return {cmd} or ""
-func (d *Dependency) CmdGet() string {
+func (d *Dependency) CmdGet() interface{} {
   _, cmd, url := PrepareCVSUrl(d.Url)
   cmd = strings.Replace(cmd, "{url}", url, 0)
   return d.Cmd("get", cmd)
 }
 
 // @return {cmd} or ""
-func (d *Dependency) CmdBuild() string {
+func (d *Dependency) CmdBuild() interface{} {
   return d.Cmd("build", "")
 }
 
 // @return {cmd} or ""
-func (d *Dependency) CmdRun() string {
+func (d *Dependency) CmdRun() interface{} {
   return d.Cmd("run", "")
 }

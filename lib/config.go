@@ -50,13 +50,13 @@ func (conf *Config) InitFromFile(filepath string) (err error) {
   return
 }
 
-func (conf *Config) Update(c Config, rewrite bool) {
-  if nil != conf {
-    for k, v := range conf {
+func (conf Config) Update(c Config, rewrite bool) {
+  if nil != c {
+    for k, v := range c {
       if rewrite {
-        proj.Config[k] = v
-      } else if _, ok := proj.Config[k]; !ok {
-        proj.Config[k] = v
+        conf[k] = v
+      } else if _, ok := conf[k]; !ok {
+        conf[k] = v
       }
     }
   }
@@ -70,5 +70,5 @@ func (conf *Config) Save(fpath string) error {
   if nil != err {
     return err
   }
-  return ioutil.WriteFile(fpath, data, os.FileMode)
+  return ioutil.WriteFile(fpath, data, 0644)
 }

@@ -24,7 +24,7 @@ func ProjectFromFile(path string, conf Config) (proj *Project, err error) {
   }
 
   // Merge local and global config
-  proj.Config.Update(conf)
+  proj.Config.Update(conf, false)
   err = proj.Init()
   return
 }
@@ -130,6 +130,6 @@ func (proj Project) addDependencyByConfig(url string, conf Config) {
 ///////////////////////////////////////////////////////////////////////////////
 
 // @return {go} build {flags} {app} or custom
-func (proj *Project) BuildCmd() string {
-  return proj.Config.Cmd("build", "{go} build {flags} {app}")
+func (proj *Project) BuildCmd() interface{} {
+  return proj.Cmd("build", "{go} build {flags} {app}")
 }

@@ -11,6 +11,7 @@ import (
   "fmt"
   "goproj/lib"
   "os"
+  "path/filepath"
   "strings"
 )
 
@@ -48,6 +49,7 @@ func init() {
 func main() {
   flag.Parse()
   fmt.Println(flag.Args())
+  pwd := filepath.Dir(os.Args[0])
 
   if flag.NArg() > 0 {
     switch os.Args[1] {
@@ -56,6 +58,10 @@ func main() {
     case "list":
     case "go":
       lib.GoRun(os.Args[2:]...)
+      break
+    case "info":
+      printInfo(pwd)
+      break
     }
   }
 }
@@ -74,4 +80,10 @@ func printHelp() {
 
   fmt.Print("\n")
   flag.PrintDefaults()
+}
+
+func printInfo(dir string) {
+  for k, v := range lib.SolutionEnv(dir) {
+    fmt.Println(k, " = ", v)
+  }
 }

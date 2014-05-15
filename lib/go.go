@@ -38,6 +38,10 @@ func init() {
   goproc.init()
 }
 
+func GoPath() string {
+  return goproc.Path
+}
+
 func GoRun(args ...string) error {
   return goproc.run(args...)
 }

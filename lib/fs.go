@@ -10,13 +10,15 @@ import (
   "errors"
   "fmt"
   "os"
-  "path"
   "path/filepath"
 )
 
 func findParentDirWithFile(dir, name string) (string, error) {
-  if dir, err := filepath.Abs(dir); nil != err {
-    return "", err
+  {
+    var err error
+    if dir, err = filepath.Abs(dir); nil != err {
+      return "", err
+    }
   }
   for {
     filename := dir + "/" + name
