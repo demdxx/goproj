@@ -1,10 +1,16 @@
 Goproj 2.x.x
 ============
 
-    Golang project manager
+Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 
 Example
 =======
+
+TODO
+====
+
+ * Postanalize dependencies if custom install
+ * Add support .godeps
 
 License
 =======
