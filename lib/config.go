@@ -12,6 +12,7 @@ import (
   "encoding/json"
   "gopkg.in/v1/yaml"
   "io"
+  "io/ioutil"
   "os"
 )
 
@@ -59,4 +60,15 @@ func (conf *Config) Update(c Config, rewrite bool) {
       }
     }
   }
+}
+
+// Save project
+//
+// @return nil or error
+func (conf *Config) Save(fpath string) error {
+  data, err := yaml.Marshal(*conf)
+  if nil != err {
+    return err
+  }
+  return ioutil.WriteFile(fpath, data, os.FileMode)
 }

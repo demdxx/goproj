@@ -29,7 +29,7 @@ func ProjectFromFile(path string, conf Config) (proj *Project, err error) {
   return
 }
 
-func (proj Project) Init() error {
+func (proj *Project) Init() error {
   deps, ok := proj.Config["deps"]
   if !ok {
     return errors.New("Project don't have dependencies")
@@ -56,12 +56,26 @@ func (proj Project) Init() error {
   return nil
 }
 
-// @return {go} build {flags} {app} or ""
-func (proj Project) BuildCmd() string {
-  if cmd, ok := proj.Config["build"]; ok {
-    return cmd.(string)
+// Init FS struct
+//
+// .goproj
+func (proj *Project) InitFileStruct() error {
+  if len(proj.Path) < 1 {
+    return errors.New("Solution path not defined")
   }
-  return "{go} build {flags} {app}"
+  if err := makeDir(proj.Path); nil != err {
+    return err
+  }
+
+  // Create solution
+  return proj.SaveConfig()
+}
+
+// Save project
+//
+// @return nil or error
+func (proj *Project) SaveConfig() error {
+  return proj.Config.Save(fmt.Sprintf("%s/.goproj", proj.Path))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,4 +123,13 @@ func (proj Project) addDependencyByConfig(url string, conf Config) {
   // Init project
   dep := &Dependency{Url: url, Config: config}
   proj.Deps = append(proj.Deps, dep)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///////////////////////////////////////////////////////////////////////////////
+
+// @return {go} build {flags} {app} or custom
+func (proj *Project) BuildCmd() string {
+  return proj.Config.Cmd("build", "{go} build {flags} {app}")
 }
