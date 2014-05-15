@@ -6,16 +6,52 @@
 
 package lib
 
+import (
+  "strings"
+)
+
 type Dependency struct {
-  Path   string
-  Url    string
+  Path   string // Path at src dir
+  Url    string // github.com/demdxx/goproj or git:https://github.com/demdxx/goproj#v2.0.1
   Config Config
 }
 
-// @return {cmd} or ""
-func (d Dependency) BuildCmd() string {
-  if cmd, ok := d.Config["build"]; ok {
-    return cmd.(string)
+///////////////////////////////////////////////////////////////////////////////
+/// Commands
+///////////////////////////////////////////////////////////////////////////////
+
+// Get commands array
+func (d *Dependency) Cmds() []interface{} {
+  if cmds, ok := d.Config["cmd"]; ok {
+    return cmds.([]interface{})
   }
-  return ""
+  return nil
+}
+
+func (d *Dependency) Cmd(name, def string) string {
+  if cmds := d.Cmds(); nil != cmds {
+    if cmd, ok := cmds; ok {
+      return cmd.(string)
+    }
+  }
+  return def
+}
+
+// Shortcuts...
+
+// @return {cmd} or ""
+func (d *Dependency) CmdGet() string {
+  _, cmd, url := PrepareCVSUrl(d.Url)
+  cmd = strings.Replace(cmd, "{url}", url, 0)
+  return d.Cmd("get", cmd)
+}
+
+// @return {cmd} or ""
+func (d *Dependency) CmdBuild() string {
+  return d.Cmd("build", "")
+}
+
+// @return {cmd} or ""
+func (d *Dependency) CmdRun() string {
+  return d.Cmd("run", "")
 }
