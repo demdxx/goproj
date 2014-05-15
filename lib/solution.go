@@ -16,13 +16,43 @@ import (
 )
 
 type Solution struct {
+  IsGlobal bool // We don't have local solution
   Path     string
   Projects []*Project
   Config   Config
 }
 
+func SolutionFromDir(dir string) (sol *Solution, err error) {
+  ndir, err := FindSolutionDirFrom(dir)
+  if nil != err {
+    // We don't have .gosolution then check .goproj
+    pdir, err := findParentDirWithFile(sir, ".goproj")
+    if nil != err {
+      return nil, err
+    }
+
+    // Init global solution
+    if GOPATH, ok := os.Environ()["GOPATH"]; ok {
+      err = nil
+      sol := new(Solution)
+      sol.IsGlobal = true
+      sol.Config["projects"] = map[string]interface{}{
+        pdir: map[string]interface{}{}, // Empty config
+      }
+      return sol, sol.Init(GOPATH)
+    }
+  }
+
+  // Init solution from file
+  sol, err = SolutionFromFile(fmt.Sprintf("%s/.gosolution", ndir))
+  return
+}
+
 func SolutionFromFile(fpath string) (sol *Solution, err error) {
-  if err = sol.Config.InitFromFile(fpath); nil == err {
+  var conf Config
+  if err = conf.InitFromFile(fpath); nil == err {
+    sol := new(Solution)
+    sol.Config = conf
     err = sol.Init(filepath.Dir(fpath))
   }
   return
@@ -45,13 +75,22 @@ func (sol *Solution) Init(path string) error {
   }
 
   // Each config
-  for dir, conf := range sol.Config {
-    proj, err := ProjectFromFile(dir, conf.(Config))
-    if nil == err {
-      err = sol.AddProject(proj)
-    }
-    if nil != err {
-      return err
+  if projects, ok := sol.Config["projects"]; ok {
+    if nil != projects {
+      switch projects.(type) {
+      case map[string]interface{}:
+        for dir, conf := range projects {
+          proj, err := ProjectFromFile(dir, conf.(Config))
+          if nil == err {
+            err = sol.AddProject(proj)
+          }
+          if nil != err {
+            return err
+          }
+        }
+      default:
+        return errors.New("Config has invalid format in conf.projects section")
+      }
     }
   }
   return nil
@@ -139,7 +178,7 @@ func (sol *Solution) AddProject(p *Project) error {
 /// Other
 ///////////////////////////////////////////////////////////////////////////////
 
-func FindSolutionFrom(dir string) (string, error) {
+func FindSolutionDirFrom(dir string) (string, error) {
   return findParentDirWithFile(sir, ".gosolution")
 }
 
