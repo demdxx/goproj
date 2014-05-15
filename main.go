@@ -10,6 +10,7 @@ import (
   "flag"
   "fmt"
   "goproj/lib"
+  "log"
   "os"
   "path/filepath"
   "strings"
@@ -49,13 +50,22 @@ func init() {
 func main() {
   flag.Parse()
   fmt.Println(flag.Args())
-  pwd := filepath.Dir(os.Args[0])
+  pwd, err := os.Getwd()
+  if nil != err {
+    pwd = filepath.Dir(os.Args[0])
+  }
 
   if flag.NArg() > 0 {
     switch os.Args[1] {
     case "init":
+      cmdInitSolution(pwd)
+      break
     case "deps":
+      cmdDepList(pwd)
+      break
     case "list":
+      cmdProjList(pwd)
+      break
     case "go":
       lib.GoRun(os.Args[2:]...)
       break
@@ -67,8 +77,54 @@ func main() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Helpers
+/// Commands
 ///////////////////////////////////////////////////////////////////////////////
+
+func cmdInitSolution(pwd string) {
+  sol, err := lib.SolutionFromDir(pwd)
+  if nil == sol || nil != err {
+    if nil != err {
+      log.Print(err)
+    }
+    return
+  }
+}
+
+func cmdDepList(pwd string) {
+  sol, err := lib.SolutionFromDir(pwd)
+  if nil == sol || nil != err {
+    if nil != err {
+      log.Print(err)
+    }
+    return
+  }
+
+  if nil != sol.Projects && len(sol.Projects) > 0 {
+    for _, p := range sol.Projects {
+      if nil != p.Deps && len(p.Deps) > 0 {
+        for _, d := range p.Deps {
+          fmt.Println(d.Url)
+        }
+      }
+    }
+  }
+}
+
+func cmdProjList(pwd string) {
+  sol, err := lib.SolutionFromDir(pwd)
+  if nil == sol || nil != err {
+    if nil != err {
+      log.Print(err)
+    }
+    return
+  }
+
+  if nil != sol.Projects && len(sol.Projects) > 0 {
+    for _, p := range sol.Projects {
+      fmt.Println(p.Path, " => ", p.Url)
+    }
+  }
+}
 
 func printHelp() {
   header := fmt.Sprintf("Goproj %s %s", version, author)

@@ -22,6 +22,7 @@ func findParentDirWithFile(dir, name string) (string, error) {
   }
   for {
     filename := dir + "/" + name
+    fmt.Println("findParentDirWithFile", filename)
     if info, err := os.Stat(filename); err == nil && !info.IsDir() {
       return dir, nil
     }
