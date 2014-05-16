@@ -33,12 +33,14 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
     }
 
     // Init global solution
+    fmt.Println("GOPATH", ndir, err)
     GOPATH := os.Getenv("GOPATH")
+    fmt.Println("GOPATH", GOPATH)
     if len(GOPATH) < 1 {
       err = errors.New("For global solution project need set enviroment GOPATH")
     } else {
       err = nil
-      sol := new(Solution)
+      sol = new(Solution)
       sol.IsGlobal = true
       sol.Config["projects"] = map[string]interface{}{
         pdir: map[string]interface{}{}, // Empty config
@@ -53,9 +55,9 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
 }
 
 func SolutionFromFile(fpath string) (sol *Solution, err error) {
-  var conf Config
+  conf := Config{}
   if err = conf.InitFromFile(fpath); nil == err {
-    sol := new(Solution)
+    sol = new(Solution)
     sol.Config = conf
     err = sol.Init(filepath.Dir(fpath))
   }
@@ -86,7 +88,7 @@ func (sol *Solution) Init(path string) (err error) {
       case map[string]interface{}:
         for dir, conf := range projects.(map[string]interface{}) {
           var proj *Project
-          proj, err = ProjectFromFile(dir, conf.(Config))
+          proj, err = ProjectFromFile(sol.Path, dir, Config(conf.(map[string]interface{})))
           if nil == err {
             err = sol.AddProject(proj)
           }
@@ -94,6 +96,7 @@ func (sol *Solution) Init(path string) (err error) {
             return
           }
         }
+        break
       default:
         err = errors.New("Config has invalid format in conf.projects section")
         return
@@ -154,6 +157,16 @@ func (sol *Solution) SaveConfig() error {
 
   // Store file
   return ioutil.WriteFile(fmt.Sprintf("%s/.gosolution", sol.Path), data, 0644)
+}
+
+func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
+  if nil != sol.Projects && len(sol.Projects) > 0 {
+    for _, p := range sol.Projects {
+      if nil == args || indexOfStringSlice(args, p.Path) {
+        p.CmdExec(cmd, args, flags)
+      }
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

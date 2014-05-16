@@ -9,6 +9,7 @@ package lib
 import (
   "errors"
   "fmt"
+  "path/filepath"
 )
 
 type Project struct {
@@ -16,11 +17,25 @@ type Project struct {
   Deps []*Dependency
 }
 
-func ProjectFromFile(path string, conf Config) (proj *Project, err error) {
-  proj = &Project{Dependency: Dependency{Path: path}}
-  if err = proj.Config.InitFromFile(path + "/.goproj"); nil != err {
-    proj = nil
+func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err error) {
+  name := projpath
+  if !filepath.IsAbs(projpath) {
+    projpath, err = filepath.Abs(solpath + "/src/" + projpath)
+    if nil != err {
+      return
+    }
+  }
+  if err = proj.Config.InitFromFile(projpath + "/.goproj"); nil != err {
     return
+  }
+
+  // Preinit project
+  proj = &Project{
+    Dependency: Dependency{
+      Name:   name,
+      Path:   projpath,
+      Config: Config{},
+    },
   }
 
   // Merge local and global config
@@ -50,7 +65,7 @@ func (proj *Project) Init() error {
     }
   case map[string]interface{}:
     for url, depconf := range deps.(map[string]interface{}) {
-      proj.addDependencyByConfig(url, depconf.(Config))
+      proj.addDependencyByConfig(url, Config(depconf.(map[string]interface{})))
     }
   }
   return nil
@@ -111,13 +126,13 @@ func (proj Project) DependencyByUrl(url string) (dep *Dependency, err error) {
 // Add dependency to deps list
 // @param url
 // @param conf
-func (proj Project) addDependencyByConfig(url string, conf Config) {
+func (proj *Project) addDependencyByConfig(url string, conf Config) {
   if nil == proj.Deps {
     proj.Deps = make([]*Dependency, 0)
   }
 
   // Update config
-  var config Config
+  config := Config{}
   config.Update(conf, true)
 
   // Init project

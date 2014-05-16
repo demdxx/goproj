@@ -11,7 +11,8 @@ import (
 )
 
 type Dependency struct {
-  Path   string // Path at src dir
+  Name   string // Original config name
+  Path   string // Full Path at src dir
   Url    string // github.com/demdxx/goproj or git:https://github.com/demdxx/goproj#v2.0.1
   Config Config
 }

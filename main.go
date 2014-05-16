@@ -81,21 +81,15 @@ func main() {
 ///////////////////////////////////////////////////////////////////////////////
 
 func cmdInitSolution(pwd string) {
-  sol, err := lib.SolutionFromDir(pwd)
-  if nil == sol || nil != err {
-    if nil != err {
-      log.Print(err)
-    }
+  sol := solution(pwd)
+  if nil != sol {
     return
   }
 }
 
 func cmdDepList(pwd string) {
-  sol, err := lib.SolutionFromDir(pwd)
-  if nil == sol || nil != err {
-    if nil != err {
-      log.Print(err)
-    }
+  sol := solution(pwd)
+  if nil != sol {
     return
   }
 
@@ -111,19 +105,36 @@ func cmdDepList(pwd string) {
 }
 
 func cmdProjList(pwd string) {
-  sol, err := lib.SolutionFromDir(pwd)
-  if nil == sol || nil != err {
-    if nil != err {
-      log.Print(err)
-    }
+  sol := solution(pwd)
+  if nil != sol {
     return
   }
 
   if nil != sol.Projects && len(sol.Projects) > 0 {
     for _, p := range sol.Projects {
-      fmt.Println(p.Path, " => ", p.Url)
+      if len(p.Url) > 0 {
+        fmt.Println(p.Path, " => ", p.Url)
+      } else {
+        fmt.Println(p.Path)
+      }
     }
   }
+}
+
+/**
+ * Run project commands
+ *
+ * @param pwd
+ * @param cmd
+ */
+func cmdExec(pwd, cmd string) {
+  sol := solution(pwd)
+  if nil != sol {
+    return
+  }
+
+  var flags map[string]interface{} = nil // TODO parse all flags
+  sol.CmdExec(cmd, flag.Args()[1:], flags)
 }
 
 func printHelp() {
@@ -142,4 +153,19 @@ func printInfo(dir string) {
   for k, v := range lib.SolutionEnv(dir) {
     fmt.Println(k, " = ", v)
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///////////////////////////////////////////////////////////////////////////////
+
+func solution(pwd string) *lib.Solution {
+  sol, err := lib.SolutionFromDir(pwd)
+  if nil == sol || nil != err {
+    if nil != err {
+      log.Print(err)
+    }
+    return nil
+  }
+  return sol
 }
