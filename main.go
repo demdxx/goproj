@@ -72,6 +72,8 @@ func main() {
     case "info":
       printInfo(pwd)
       break
+    default:
+      cmdExec(pwd, os.Args[1], flag.Args()[1:])
     }
   }
 }
@@ -82,14 +84,14 @@ func main() {
 
 func cmdInitSolution(pwd string) {
   sol := solution(pwd)
-  if nil != sol {
+  if nil == sol {
     return
   }
 }
 
 func cmdDepList(pwd string) {
   sol := solution(pwd)
-  if nil != sol {
+  if nil == sol {
     return
   }
 
@@ -106,7 +108,7 @@ func cmdDepList(pwd string) {
 
 func cmdProjList(pwd string) {
   sol := solution(pwd)
-  if nil != sol {
+  if nil == sol {
     return
   }
 
@@ -127,14 +129,18 @@ func cmdProjList(pwd string) {
  * @param pwd
  * @param cmd
  */
-func cmdExec(pwd, cmd string) {
+func cmdExec(pwd, cmd string, args []string) {
   sol := solution(pwd)
-  if nil != sol {
+  if nil == sol {
     return
   }
 
+  fmt.Println("cmdExec", pwd, cmd, args)
+
   var flags map[string]interface{} = nil // TODO parse all flags
-  sol.CmdExec(cmd, flag.Args()[1:], flags)
+  if err := sol.CmdExec(cmd, args, flags); nil != err {
+    fmt.Println(err)
+  }
 }
 
 func printHelp() {

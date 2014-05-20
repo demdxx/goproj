@@ -1,0 +1,134 @@
+package lib
+
+import (
+  "errors"
+  "fmt"
+  "os"
+  "os/exec"
+  "strings"
+)
+
+type CommandExecutor interface {
+  UpdateEnv()
+
+  Cmds() map[string]interface{}
+  Cmd(name string, def interface{}) interface{}
+
+  // Shortcuts...
+  // @return {cmd} or ""
+
+  CmdGet() interface{}
+  CmdBuild() interface{}
+  CmdRun() interface{}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Prepare
+///////////////////////////////////////////////////////////////////////////////
+
+func getSolutionPath(e interface{}) string {
+  return ""
+}
+
+func getPath(e interface{}) string {
+  switch e.(type) {
+  case Dependency:
+    return e.(Dependency).Path
+    break
+  case *Dependency:
+    return e.(*Dependency).Path
+    break
+  case Project:
+    return e.(Project).Path
+    break
+  case *Project:
+    return e.(*Project).Path
+    break
+  }
+  return ""
+}
+
+func getApp(e interface{}) string {
+  switch e.(type) {
+  case Dependency:
+    return e.(Dependency).Name
+    break
+  case *Dependency:
+    return e.(*Dependency).Name
+    break
+  case Project:
+    return e.(Project).Name
+    break
+  case *Project:
+    return e.(*Project).Name
+    break
+  }
+  return ""
+}
+
+func prapareFlags(flags map[string]interface{}) string {
+  return ""
+}
+
+func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interface{}) (interface{}, error) {
+  switch cmd.(type) {
+  case string:
+    var s string
+    s = strings.Replace(cmd.(string), "{flags}", prapareFlags(flags), -1)
+    s = strings.Replace(s, "{solution}", getSolutionPath(e), -1)
+    s = strings.Replace(s, "{path}", getPath(e), -1)
+    s = strings.Replace(s, "{app}", getApp(e), -1)
+    s = strings.Replace(s, "{go}", goproc.Path, -1)
+    fmt.Println("prepareCommand", s, " * ", cmd)
+    return s, nil
+    break
+  }
+  return "", errors.New("Prepare command failed")
+}
+
+func run(command string) error {
+  fmt.Println(">", command)
+  cmd := exec.Command("sh", "-c", command)
+  cmd.Stdout = os.Stdout
+  return cmd.Run()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Actions
+///////////////////////////////////////////////////////////////////////////////
+
+func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error {
+  var command interface{} = nil
+  switch cmd {
+  case "get":
+    command = e.CmdGet()
+    break
+  case "build":
+    command = e.CmdBuild()
+    break
+  case "run":
+    command = e.CmdRun()
+    break
+  default:
+    command = e.Cmd(cmd, "")
+    break
+  }
+  fmt.Println("execute", e, cmd, flags, "=>", command)
+
+  if !isEmpty(command) {
+    // Prepare command
+    var err error
+    if command, err = prepareCommand(e, command, flags); nil != err {
+      return err
+    }
+
+    // Execute command
+    switch command.(type) {
+    case string:
+      return run(command.(string))
+      break
+    }
+  }
+
+  return errors.New(fmt.Sprintf("Unsupport command: %s", cmd))
+}

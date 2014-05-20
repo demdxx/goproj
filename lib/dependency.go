@@ -18,6 +18,15 @@ type Dependency struct {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// Init
+///////////////////////////////////////////////////////////////////////////////
+
+// TODO Init enviroment before run any command
+func (d *Dependency) UpdateEnv() {
+  // ...
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// Commands
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -29,7 +38,7 @@ func (d *Dependency) Cmds() map[string]interface{} {
   return nil
 }
 
-func (d *Dependency) Cmd(name, def string) interface{} {
+func (d *Dependency) Cmd(name string, def interface{}) interface{} {
   if cmds := d.Cmds(); nil != cmds {
     if cmd, ok := cmds[name]; ok {
       return cmd

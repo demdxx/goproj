@@ -25,7 +25,9 @@ func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err 
       return
     }
   }
-  if err = proj.Config.InitFromFile(projpath + "/.goproj"); nil != err {
+
+  projConf := Config{}
+  if err = projConf.InitFromFile(projpath + "/.goproj"); nil != err {
     return
   }
 
@@ -34,7 +36,7 @@ func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err 
     Dependency: Dependency{
       Name:   name,
       Path:   projpath,
-      Config: Config{},
+      Config: projConf,
     },
   }
 
@@ -93,6 +95,30 @@ func (proj *Project) SaveConfig() error {
   return proj.Config.Save(fmt.Sprintf("%s/.goproj", proj.Path))
 }
 
+// TODO Init enviroment before run any command
+func (d *Dependency) UpdateEnv() {
+  // ...
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Actions
+///////////////////////////////////////////////////////////////////////////////
+
+func (proj *Project) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
+  fmt.Println("CmdExec", proj.Path, cmd, args, flags)
+  // Before run for dependencies
+  if (nil == args || len(args) < 1) && nil != proj.Deps && len(proj.Deps) > 0 {
+    for _, d := range proj.Deps {
+      if err := execute(d, cmd, flags); nil != err {
+        fmt.Println(err)
+      }
+    }
+  }
+
+  // Run commands for me
+  return execute(proj, cmd, flags)
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Dependencies
 ///////////////////////////////////////////////////////////////////////////////
@@ -144,7 +170,24 @@ func (proj *Project) addDependencyByConfig(url string, conf Config) {
 /// Helpers
 ///////////////////////////////////////////////////////////////////////////////
 
+func (proj *Project) Cmds() map[string]interface{} {
+  return proj.Dependency.Cmds()
+}
+
+func (proj *Project) Cmd(name string, def interface{}) interface{} {
+  return proj.Dependency.Cmd(name, def)
+}
+
+func (proj *Project) CmdGet() interface{} {
+  return proj.Dependency.CmdGet()
+}
+
 // @return {go} build {flags} {app} or custom
-func (proj *Project) BuildCmd() interface{} {
+func (proj *Project) CmdBuild() interface{} {
   return proj.Cmd("build", "{go} build {flags} {app}")
+}
+
+func (proj *Project) CmdRun() interface{} {
+  fmt.Println("CmdRun", proj, proj.Cmds())
+  return proj.Dependency.CmdRun()
 }

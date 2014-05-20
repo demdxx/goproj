@@ -33,9 +33,7 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
     }
 
     // Init global solution
-    fmt.Println("GOPATH", ndir, err)
     GOPATH := os.Getenv("GOPATH")
-    fmt.Println("GOPATH", GOPATH)
     if len(GOPATH) < 1 {
       err = errors.New("For global solution project need set enviroment GOPATH")
     } else {
@@ -89,7 +87,7 @@ func (sol *Solution) Init(path string) (err error) {
         for dir, conf := range projects.(map[string]interface{}) {
           var proj *Project
           proj, err = ProjectFromFile(sol.Path, dir, Config(conf.(map[string]interface{})))
-          if nil == err {
+          if nil == err && nil != proj {
             err = sol.AddProject(proj)
           }
           if nil != err {
@@ -159,14 +157,21 @@ func (sol *Solution) SaveConfig() error {
   return ioutil.WriteFile(fmt.Sprintf("%s/.gosolution", sol.Path), data, 0644)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// Actions
+///////////////////////////////////////////////////////////////////////////////
+
 func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
   if nil != sol.Projects && len(sol.Projects) > 0 {
     for _, p := range sol.Projects {
-      if nil == args || indexOfStringSlice(args, p.Path) {
-        p.CmdExec(cmd, args, flags)
+      if nil == args || len(args) < 1 || -1 != indexOfStringSlice(args, p.Path) {
+        if err := p.CmdExec(cmd, args, flags); nil != err {
+          return err
+        }
       }
     }
   }
+  return nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
