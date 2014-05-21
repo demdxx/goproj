@@ -96,7 +96,7 @@ func (proj *Project) SaveConfig() error {
 }
 
 // TODO Init enviroment before run any command
-func (d *Dependency) UpdateEnv() {
+func (proj *Project) UpdateEnv() {
   // ...
 }
 

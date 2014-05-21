@@ -1,10 +1,12 @@
 package lib
 
 import (
+  "bytes"
   "errors"
   "fmt"
   "os"
   "os/exec"
+  "strconv"
   "strings"
 )
 
@@ -67,7 +69,27 @@ func getApp(e interface{}) string {
 }
 
 func prapareFlags(flags map[string]interface{}) string {
-  return ""
+  buf := bytes.NewBuffer(nil)
+  if nil != flags {
+    for k, v := range flags {
+      buf.WriteByte('&')
+      buf.WriteString(k)
+      buf.WriteByte('=')
+      switch v.(type) {
+      case string:
+        buf.WriteString(v.(string))
+        break
+      case int:
+      case int32:
+      case int64:
+        buf.WriteString(strconv.Itoa(int(v)))
+        break
+      default:
+        buf.WriteString(fmt.Sprintf("%v", v))
+      }
+    }
+  }
+  return buf.String()
 }
 
 func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interface{}) (interface{}, error) {
@@ -75,7 +97,7 @@ func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interfa
   case string:
     var s string
     s = strings.Replace(cmd.(string), "{flags}", prapareFlags(flags), -1)
-    s = strings.Replace(s, "{solution}", getSolutionPath(e), -1)
+    s = strings.Replace(s, "{solutionpath}", getSolutionPath(e), -1)
     s = strings.Replace(s, "{path}", getPath(e), -1)
     s = strings.Replace(s, "{app}", getApp(e), -1)
     s = strings.Replace(s, "{go}", goproc.Path, -1)
