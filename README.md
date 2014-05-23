@@ -3,6 +3,10 @@ Goproj 2.x.x
 
 Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 
+    @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
+    @version 1.0.0alpha
+    @licese CC-BY
+
 Install
 =======
 
@@ -17,11 +21,17 @@ Commands
 cd {any-dir-in-solution}
 ```
 
-> flags: # eqvals env vars GO{flag}
->   os = mac | linux | freebsd | etc
->   gc = off | {number}
->   arch = arm | i386 | x86_64 | etc
->   -arm -> shortcut for -arch arm
+    flags: # eqvals env vars GO{flag}
+      os = mac | linux | freebsd | etc
+      gc = off | {number}
+      arch = arm | i386 | x86_64 | etc
+      -arm -> shortcut for -arch arm
+
+**help** – show help or help [command]
+
+```sh
+goproj help
+```
 
 **get** – download and install packages and dependencies.
 
