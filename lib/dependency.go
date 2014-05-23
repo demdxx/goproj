@@ -23,7 +23,7 @@ type Dependency struct {
 
 // TODO Init enviroment before run any command
 func (d *Dependency) UpdateEnv() {
-  // ...
+  // TODO set custom environment from config
 }
 
 ///////////////////////////////////////////////////////////////////////////////

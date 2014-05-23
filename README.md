@@ -3,14 +3,50 @@ Goproj 2.x.x
 
 Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 
-Example
+Install
 =======
+
+```sh
+go get github.com/demdxx/goproj && go install
+```
+
+Commands
+========
+
+```sh
+cd {any-dir-in-solution}
+```
+
+> flags: # eqvals env vars GO{flag}
+>   os = mac | linux | freebsd | etc
+>   gc = off | {number}
+>   arch = arm | i386 | x86_64 | etc
+>   -arm -> shortcut for -arch arm
+
+**get** – download and install packages and dependencies.
+
+```sh
+goproj get
+```
+
+**build** – compile packages and dependencies.
+
+```sh
+goproj build [flags]
+```
+
+**run** – compile and run Go program.
+
+```sh
+goproj run [project names] [flags]
+```
 
 TODO
 ====
 
  * Postanalize dependencies if custom install
  * Add support .godeps
+ * Add update environment flags
 
 License
 =======

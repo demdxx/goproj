@@ -16,8 +16,9 @@ import (
   "strings"
 )
 
-const version = "2.0.0"
+const version = "2.0.0alpha"
 const author = "Dmitry Ponomarev <demdxx@gmail.com>"
+const year = "2014"
 
 var help = map[string]string{
   "init":    "create project structure. goptoj init [folder] <name>",
@@ -49,7 +50,6 @@ func init() {
 
 func main() {
   flag.Parse()
-  fmt.Println(flag.Args())
   pwd, err := os.Getwd()
   if nil != err {
     pwd = filepath.Dir(os.Args[0])
@@ -67,10 +67,21 @@ func main() {
       cmdProjList(pwd)
       break
     case "go":
-      lib.GoRun(os.Args[2:]...)
+      args := os.Args[2:]
+      if len(args) > 0 {
+        lib.GoRun(os.Args[2:]...)
+      } else {
+        fmt.Print(lib.GoPath())
+      }
       break
     case "info":
       printInfo(pwd)
+      break
+    case "version":
+      fmt.Printf("Goproj %s %s %s\n", version, author, year)
+      break
+    case "help":
+      printHelp()
       break
     default:
       cmdExec(pwd, os.Args[1], flag.Args()[1:])
@@ -135,8 +146,6 @@ func cmdExec(pwd, cmd string, args []string) {
     return
   }
 
-  fmt.Println("cmdExec", pwd, cmd, args)
-
   var flags map[string]interface{} = nil // TODO parse all flags
   if err := sol.CmdExec(cmd, args, flags); nil != err {
     fmt.Println(err)
@@ -144,7 +153,7 @@ func cmdExec(pwd, cmd string, args []string) {
 }
 
 func printHelp() {
-  header := fmt.Sprintf("Goproj %s %s", version, author)
+  header := fmt.Sprintf("Goproj %s %s %s", version, author, year)
   fmt.Printf("%s\n%s\n", header, strings.Repeat("=", len(header)))
 
   for k, v := range help {
@@ -157,7 +166,7 @@ func printHelp() {
 
 func printInfo(dir string) {
   for k, v := range lib.SolutionEnv(dir) {
-    fmt.Println(k, " = ", v)
+    fmt.Printf("%s=%s\n", k, v)
   }
 }
 

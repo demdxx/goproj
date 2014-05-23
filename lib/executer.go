@@ -82,7 +82,7 @@ func prapareFlags(flags map[string]interface{}) string {
       case int:
       case int32:
       case int64:
-        buf.WriteString(strconv.Itoa(int(v)))
+        buf.WriteString(strconv.Itoa(v.(int)))
         break
       default:
         buf.WriteString(fmt.Sprintf("%v", v))
@@ -101,14 +101,14 @@ func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interfa
     s = strings.Replace(s, "{path}", getPath(e), -1)
     s = strings.Replace(s, "{app}", getApp(e), -1)
     s = strings.Replace(s, "{go}", goproc.Path, -1)
-    fmt.Println("prepareCommand", s, " * ", cmd)
     return s, nil
     break
   }
   return "", errors.New("Prepare command failed")
 }
 
-func run(command string) error {
+func run(e CommandExecutor, command string) error {
+  e.UpdateEnv()
   fmt.Println(">", command)
   cmd := exec.Command("sh", "-c", command)
   cmd.Stdout = os.Stdout
@@ -135,7 +135,6 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
     command = e.Cmd(cmd, "")
     break
   }
-  fmt.Println("execute", e, cmd, flags, "=>", command)
 
   if !isEmpty(command) {
     // Prepare command
@@ -147,7 +146,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
     // Execute command
     switch command.(type) {
     case string:
-      return run(command.(string))
+      return run(e, command.(string))
       break
     }
   }

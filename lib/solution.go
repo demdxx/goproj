@@ -163,8 +163,13 @@ func (sol *Solution) SaveConfig() error {
 
 func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
   if nil != sol.Projects && len(sol.Projects) > 0 {
+    // Process command
     for _, p := range sol.Projects {
       if nil == args || len(args) < 1 || -1 != indexOfStringSlice(args, p.Path) {
+        // Init environment
+        sol.UpdateEnv()
+
+        // Do exec
         if err := p.CmdExec(cmd, args, flags); nil != err {
           return err
         }
@@ -172,6 +177,22 @@ func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interfa
     }
   }
   return nil
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Getters/Setters
+///////////////////////////////////////////////////////////////////////////////
+
+func (sol *Solution) EnvPath() string {
+  PATH := os.Getenv("PATH")
+  return fmt.Sprintf("%s/bin:%s", strings.TrimRight(sol.Path, "/"), PATH)
+}
+
+func (sol *Solution) UpdateEnv() {
+  if !sol.IsGlobal {
+    os.Setenv("GOPATH", sol.Path)
+    os.Setenv("PATH", sol.EnvPath())
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -211,23 +232,21 @@ func HasSolution(dir string) bool {
   return b
 }
 
-/**
- * Get enviroment for solution or project dir
- *
- * @param dir path
- * @return map{GOPATH,PATH,GO}
- */
+// Get enviroment for solution or project dir
+//
+// @param dir path
+// @return map{GOPATH,PATH,GO}
 func SolutionEnv(dir string) map[string]string {
   var GOPATH, PATH string
   PATH = os.Getenv("PATH")
 
   sol, _ := SolutionFromDir(dir)
-  if nil != sol {
+  if nil != sol && !sol.IsGlobal {
     GOPATH = sol.Path
-    PATH = fmt.Sprintf("%s:%s/bin", PATH, strings.TrimRight(sol.Path, "/"))
+    PATH = sol.EnvPath()
   } else {
     GOPATH = os.Getenv("GOPATH")
-    PATH = fmt.Sprintf("%s:%s/bin", PATH, strings.TrimRight(GOPATH, "/"))
+    PATH = fmt.Sprintf("%s/bin:%s", strings.TrimRight(GOPATH, "/"), PATH)
   }
   return map[string]string{
     "GOPATH": GOPATH,

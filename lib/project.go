@@ -97,7 +97,7 @@ func (proj *Project) SaveConfig() error {
 
 // TODO Init enviroment before run any command
 func (proj *Project) UpdateEnv() {
-  // ...
+  proj.Dependency.UpdateEnv()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -105,13 +105,10 @@ func (proj *Project) UpdateEnv() {
 ///////////////////////////////////////////////////////////////////////////////
 
 func (proj *Project) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
-  fmt.Println("CmdExec", proj.Path, cmd, args, flags)
   // Before run for dependencies
   if (nil == args || len(args) < 1) && nil != proj.Deps && len(proj.Deps) > 0 {
     for _, d := range proj.Deps {
-      if err := execute(d, cmd, flags); nil != err {
-        fmt.Println(err)
-      }
+      execute(d, cmd, flags)
     }
   }
 
@@ -188,6 +185,5 @@ func (proj *Project) CmdBuild() interface{} {
 }
 
 func (proj *Project) CmdRun() interface{} {
-  fmt.Println("CmdRun", proj, proj.Cmds())
   return proj.Dependency.CmdRun()
 }
