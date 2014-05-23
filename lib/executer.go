@@ -151,5 +151,5 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
     }
   }
 
-  return errors.New(fmt.Sprintf("Unsupport command: %s", cmd))
+  return nil // errors.New(fmt.Sprintf("Unsupport command: %s", cmd))
 }

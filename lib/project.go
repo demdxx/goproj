@@ -219,7 +219,7 @@ func (proj *Project) Cmd(name string, def interface{}) interface{} {
 }
 
 func (proj *Project) CmdGet() interface{} {
-  return proj.Dependency.CmdGet()
+  return nil // proj.Dependency.CmdGet()
 }
 
 // @return {go} build {flags} {app} or custom

@@ -52,7 +52,10 @@ func (d *Dependency) Cmd(name string, def interface{}) interface{} {
 // @return {cmd} or ""
 func (d *Dependency) CmdGet() interface{} {
   _, cmd, url := PrepareCVSUrl(d.Url)
-  cmd = strings.Replace(cmd, "{url}", url, 0)
+  if len(url) < 1 {
+    return nil
+  }
+  cmd = strings.Replace(cmd, "{url}", url, -1)
   return d.Cmd("get", cmd)
 }
 

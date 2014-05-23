@@ -31,7 +31,7 @@ func isEmptyValue(v reflect.Value) bool {
 }
 
 func isEmpty(v interface{}) bool {
-  return isEmptyValue(reflect.ValueOf(v))
+  return nil == v || isEmptyValue(reflect.ValueOf(v))
 }
 
 func indexOfStringSlice(slice []string, s string) int {

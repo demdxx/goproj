@@ -41,9 +41,11 @@ func PrepareCVSUrl(_url string) (cvs, cmd, p_url string) {
     u, err := url.Parse(_url)
     if nil == err {
       // Check user name
-      cvs = u.User.Username()
-      if cmd, ok = CVS_tpl[cvs]; ok {
-        return
+      if nil != u.User {
+        cvs = u.User.Username()
+        if cmd, ok = CVS_tpl[cvs]; ok {
+          return
+        }
       }
 
       // Check path tail
