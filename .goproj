@@ -1,0 +1,15 @@
+{
+  "project": "goproj",
+  "version": "2.0.0",
+  "license": "cc-by-4.0",
+
+  "run": "{go} run src/{app}/main.go run",
+
+  "cmd": {
+    "run": "{go} run src/{app}/main.go -h"
+  },
+
+  "deps": {
+    "gopkg.in/v1/yaml": {"build": 0}
+  }
+}

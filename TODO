@@ -1,6 +1,0 @@
-## Version 0.0.1
-
-  - Add .hgignore and .gitignore support
-  - Personal build configs for sub packages
-  - Build by default config option
-  - ~Add `test` command~

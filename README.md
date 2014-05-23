@@ -1,88 +1,64 @@
-goproj alpha
+Goproj 2.x.x
 ============
 
-Go language project helper.
-NOTE: This is last python version. Use the version on the GO ;)
+Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 
     @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
     @version 1.0.0alpha
-    @licese MIT
+    @licese CC-BY
 
-## Install
+Install
+=======
 
 ```sh
-git clone git://github.com/demdxx/goproj.git
-
-cd goproj
-
-sudo cp goproj /usr/local/bin/
+go get github.com/demdxx/goproj && go install
 ```
 
-## Project structure
+Commands
+========
 
- * bin
- * pkg
- * src
-   * <project1>/.goproj
-   * <project2>/.goproj
-   * ...
-   * <projectN>/.goproj
- * .gosolution
-
-### Solution file `.gosolution`
-
-```python
-{
-  '<project name and path same>': {
-    'git': '<repository uri>', # Optional
-    # OR
-    'hg': '<repository uri>', # Optional
-  }
-}
-```
-
-### Project file `.goproj`
-
-```python
-# Example revel web project application
-{
-  "project": "{projectname}",
-  "version": "0.0.1",
-
-  # Current project settings
-  "run": "{solutionpath}/revel run {app}",
-  "build": False,
-
-  # Dependencies
-  "deps": {
-    "github.com/robfig/revel": {
-      "build": "{go} build -o revel {app}/revel", # Run after get
-    },
-  },
-}
-```
-
-## Using
-
-All commands are needed packages automatically, so this option can be omitted. Start any commands can be from any subcatalog of project, all settings are set automatically.
-
-### Init new project
 ```sh
-cd project_folder
-goproj init <project name or repository URI>
+cd {any-dir-in-solution}
 ```
 
-### Compile and install packages and dependencies
+    flags: # eqvals env vars GO{flag}
+      os = mac | linux | freebsd | etc
+      gc = off | {number}
+      arch = arm | i386 | x86_64 | etc
+      -arm -> shortcut for -arch arm
+
+**help** – show help or help [command]
+
 ```sh
-goproj install or goproj install <package without src>
+goproj help
 ```
 
-### Run
+**get** – download and install packages and dependencies.
+
 ```sh
-goproj run [target]
+goproj get
 ```
 
-### Testing
+**build** – compile packages and dependencies.
+
 ```sh
-goproj test [package, ...] [-flags]
+goproj build [flags]
 ```
+
+**run** – compile and run Go program.
+
+```sh
+goproj run [project names] [flags]
+```
+
+TODO
+====
+
+ * Postanalize dependencies if custom install
+ * Add support .godeps
+ * Add update environment flags
+
+License
+=======
+
+<a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">Goproj</span> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="http://github.com/demdxx/goproj" rel="dct:source">http://github.com/demdxx/goproj</a>.
