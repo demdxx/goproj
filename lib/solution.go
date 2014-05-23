@@ -129,6 +129,15 @@ func (sol *Solution) InitFileStruct() error {
     return err
   }
 
+  // Process initialize projects
+  if nil != sol.Projects && len(sol.Projects) > 0 {
+    for _, p := range sol.Projects {
+      if err := p.InitFileStruct(sol.Path + "/src/"); nil != err {
+        return err
+      }
+    }
+  }
+
   // Create solution
   return sol.SaveConfig()
 }

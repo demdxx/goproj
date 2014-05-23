@@ -21,7 +21,7 @@ const author = "Dmitry Ponomarev <demdxx@gmail.com>"
 const year = "2014"
 
 var help = map[string]string{
-  "init":    "create project structure. goptoj init [folder] <name>",
+  "init":    "create project structure. goproj init [app-repository] <app-name>",
   "deps":    "list of dependencies",
   "list":    "list packages",
   "build":   "compile packages and dependencies",
@@ -58,7 +58,7 @@ func main() {
   if flag.NArg() > 0 {
     switch os.Args[1] {
     case "init":
-      cmdInitSolution(pwd)
+      cmdInitSolution(pwd, os.Args[2:])
       break
     case "deps":
       cmdDepList(pwd)
@@ -93,9 +93,32 @@ func main() {
 /// Commands
 ///////////////////////////////////////////////////////////////////////////////
 
-func cmdInitSolution(pwd string) {
-  sol := solution(pwd)
+func cmdInitSolution(pwd string, args []string) {
+  if len(args) < 1 {
+    log.Panicln("Err: invalid `init` command fromat")
+    return
+  }
+
+  sol, _ := lib.SolutionFromDir(pwd)
   if nil == sol {
+    sol = &lib.Solution{}
+    sol.Init(pwd)
+  }
+
+  // Add project
+  if len(args) > 0 {
+    sol.AddProject(lib.ProjectFromUrl(args...))
+  }
+
+  // Init file structure
+  if err := sol.InitFileStruct(); nil != err {
+    log.Print(err)
+    return
+  }
+
+  // Save configs
+  if err := sol.SaveConfig(); nil != err {
+    log.Print(err)
     return
   }
 }

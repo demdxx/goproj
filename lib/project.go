@@ -9,12 +9,27 @@ package lib
 import (
   "errors"
   "fmt"
+  "net/url"
   "path/filepath"
+  "strings"
 )
 
 type Project struct {
   Dependency
   Deps []*Dependency
+}
+
+func ProjectFromUrl(args ...string) *Project {
+  p := &Project{}
+  if IsUrl(args[0]) {
+    p.Url = args[0]
+    if len(args) > 1 {
+      p.Path = args[1]
+    }
+  } else {
+    p.Path = args[0]
+  }
+  return p
 }
 
 func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err error) {
@@ -49,7 +64,7 @@ func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err 
 func (proj *Project) Init() error {
   deps, ok := proj.Config["deps"]
   if !ok {
-    return errors.New("Project don't have dependencies")
+    return nil
   }
 
   // Reset deps
@@ -73,15 +88,43 @@ func (proj *Project) Init() error {
   return nil
 }
 
+func (proj *Project) ReloadConfig() (err error) {
+  projConf := Config{}
+  if err = projConf.InitFromFile(proj.Path + "/.goproj"); nil != err {
+    return
+  }
+
+  proj.Config = projConf
+  err = proj.Init()
+  return
+}
+
 // Init FS struct
 //
 // .goproj
-func (proj *Project) InitFileStruct() error {
+func (proj *Project) InitFileStruct(dir string) error {
   if len(proj.Path) < 1 {
-    return errors.New("Solution path not defined")
+    if len(proj.Url) > 0 {
+      path, err := ProjectPathFromUrl(proj.Path)
+      if nil != err {
+        return err
+      }
+      proj.Path = path
+    } else {
+      return errors.New("Solution path not defined")
+    }
   }
-  if err := makeDir(proj.Path); nil != err {
+  if err := makeDir(dir + "/" + proj.Path); nil != err {
     return err
+  }
+
+  if len(proj.Url) > 0 {
+    // Load project from URL
+    _, cmd, url := PrepareCVSUrl(proj.Url)
+    if err := run(proj, strings.Replace(cmd, "{url}", url, -1)); nil != err {
+      return err
+    }
+    return proj.Init()
   }
 
   // Create solution
@@ -186,4 +229,12 @@ func (proj *Project) CmdBuild() interface{} {
 
 func (proj *Project) CmdRun() interface{} {
   return proj.Dependency.CmdRun()
+}
+
+func ProjectPathFromUrl(u string) (string, error) {
+  _url, err := url.Parse(u)
+  if nil != err {
+    return "", err
+  }
+  return fmt.Sprintf("%s%s", _url.Host, _url.Path), nil
 }

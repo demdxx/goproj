@@ -6,7 +6,7 @@ NOTE: Small experementall revision for simple projects
 
     @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
     @version 1.0.0alpha
-    @licese CC-BY
+    @licese CC-BY-4,0
 
 Install
 =======

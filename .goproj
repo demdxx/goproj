@@ -3,13 +3,11 @@
   "version": "2.0.0",
   "license": "cc-by-4.0",
 
-  "run": "{go} run src/{app}/main.go run",
-
   "cmd": {
-    "run": "{go} run src/{app}/main.go -h"
+    "run": "{go} run src/{app}/main.go"
   },
 
   "deps": {
-    "gopkg.in/v1/yaml": {"build": 0}
+    "gopkg.in/v1/yaml": {}
   }
 }

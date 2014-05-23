@@ -8,6 +8,7 @@ package lib
 
 import (
   "reflect"
+  "strings"
 )
 
 // From src/pkg/encoding/json.
@@ -42,4 +43,21 @@ func indexOfStringSlice(slice []string, s string) int {
     }
   }
   return -1
+}
+
+var urlSufixes = []string{
+  ".git", ".hg", ".svn", ".bzr",
+}
+
+func IsUrl(url string) bool {
+  arr := strings.Split(url, "://")
+  if len(arr) < 2 {
+    for _, fx := range urlSufixes {
+      if strings.HasSuffix(url, fx) {
+        return true
+      }
+    }
+    return false
+  }
+  return true
 }
