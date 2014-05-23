@@ -1,7 +1,8 @@
 goproj alpha
 ============
 
-Go language project helper
+Go language project helper.
+NOTE: This is last python version. Use the version on the GO ;)
 
     @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
     @version 1.0.0alpha
