@@ -2,6 +2,7 @@ Goproj 2.x.x
 ============
 
 Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
+NOTE: Small experementall revision for simple projects
 
     @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
     @version 1.0.0alpha
