@@ -29,6 +29,14 @@ type CommandExecutor interface {
 ///////////////////////////////////////////////////////////////////////////////
 
 func getSolutionPath(e interface{}) string {
+  switch e.(type) {
+  case *Dependency:
+    return e.(*Dependency).SolutionPath()
+    break
+  case *Project:
+    return e.(*Project).SolutionPath()
+    break
+  }
   return ""
 }
 
@@ -112,7 +120,12 @@ func run(e CommandExecutor, command string) error {
   fmt.Println(">", command)
   cmd := exec.Command("sh", "-c", command)
   cmd.Stdout = os.Stdout
-  return cmd.Run()
+  cmd.Stderr = os.Stderr
+  cmd.Stdin = os.Stdin
+  if err := cmd.Start(); nil != err {
+    return err
+  }
+  return cmd.Wait()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

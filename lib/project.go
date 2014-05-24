@@ -16,7 +16,8 @@ import (
 
 type Project struct {
   Dependency
-  Deps []*Dependency
+  Owner interface{} // Project high level owner
+  Deps  []*Dependency
 }
 
 func ProjectFromUrl(args ...string) *Project {
@@ -202,12 +203,12 @@ func (proj *Project) addDependencyByConfig(url string, conf Config) {
   config.Update(conf, true)
 
   // Init project
-  dep := &Dependency{Url: url, Config: config}
+  dep := &Dependency{Name: url, Url: url, Config: config, Owner: proj}
   proj.Deps = append(proj.Deps, dep)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Helpers
+/// Commands
 ///////////////////////////////////////////////////////////////////////////////
 
 func (proj *Project) Cmds() map[string]interface{} {

@@ -8,6 +8,7 @@ package lib
 
 import (
   "fmt"
+  "os"
   "os/exec"
 )
 
@@ -20,12 +21,12 @@ func (g *goProc) init() {
 }
 
 func (g goProc) run(args ...string) (err error) {
-  out, err := exec.Command(g.Path, args...).Output()
-  if err != nil {
-    return
-  }
-  fmt.Printf("%s", out)
-  return
+  fmt.Println(">", g.Path, args)
+  cmd := exec.Command(g.Path, args...)
+  cmd.Stdout = os.Stdout
+  cmd.Stderr = os.Stderr
+  cmd.Stdin = os.Stdin
+  return cmd.Run()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

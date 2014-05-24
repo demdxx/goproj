@@ -174,7 +174,7 @@ func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interfa
   if nil != sol.Projects && len(sol.Projects) > 0 {
     // Process command
     for _, p := range sol.Projects {
-      if nil == args || len(args) < 1 || -1 != indexOfStringSlice(args, p.Path) {
+      if nil == args || len(args) < 1 || -1 != indexOfStringSlice(args, p.Name) {
         // Init environment
         sol.UpdateEnv()
 
@@ -224,6 +224,7 @@ func (sol *Solution) AddProject(p *Project) error {
   if nil == sol.Projects {
     sol.Projects = make([]*Project, 0)
   }
+  p.Owner = sol
   sol.Projects = append(sol.Projects, p)
   return nil
 }
@@ -262,4 +263,22 @@ func SolutionEnv(dir string) map[string]string {
     "PATH":   PATH,
     "GO":     GoPath(),
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Extends
+///////////////////////////////////////////////////////////////////////////////
+
+func (proj *Project) SolutionPath() string {
+  if nil != proj.Owner {
+    return proj.Owner.(*Solution).Path
+  }
+  return ""
+}
+
+func (dep *Dependency) SolutionPath() string {
+  if nil != dep.Owner {
+    return dep.Owner.(*Project).SolutionPath()
+  }
+  return ""
 }

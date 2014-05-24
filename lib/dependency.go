@@ -11,9 +11,10 @@ import (
 )
 
 type Dependency struct {
-  Name   string // Original config name
-  Path   string // Full Path at src dir
-  Url    string // github.com/demdxx/goproj or git:https://github.com/demdxx/goproj#v2.0.1
+  Owner  interface{} // Dependency high level owner
+  Name   string      // Original config name
+  Path   string      // Full Path at src dir
+  Url    string      // github.com/demdxx/goproj or git:https://github.com/demdxx/goproj#v2.0.1
   Config Config
 }
 
