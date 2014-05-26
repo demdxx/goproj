@@ -26,6 +26,13 @@ func ProjectFromUrl(args ...string) *Project {
     p.Url = args[0]
     if len(args) > 1 {
       p.Path = args[1]
+    } else {
+      var err error
+      p.Path, err = PathFromUrl(p.Url)
+      if nil != err {
+        return nil
+      }
+      p.Path = p.Path
     }
   } else {
     p.Path = args[0]
@@ -122,7 +129,13 @@ func (proj *Project) InitFileStruct(dir string) error {
   if len(proj.Url) > 0 {
     // Load project from URL
     _, cmd, url := PrepareCVSUrl(proj.Url)
-    if err := run(proj, strings.Replace(cmd, "{url}", url, -1)); nil != err {
+    var err error
+    var command interface{}
+
+    if command, err = prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil); nil != err {
+      return err
+    }
+    if err := run(proj, command.(string)); nil != err {
       return err
     }
     return proj.Init()

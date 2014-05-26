@@ -7,6 +7,8 @@
 package lib
 
 import (
+  "errors"
+  "net/url"
   "reflect"
   "strings"
 )
@@ -49,15 +51,26 @@ var urlSufixes = []string{
   ".git", ".hg", ".svn", ".bzr",
 }
 
-func IsUrl(url string) bool {
-  arr := strings.Split(url, "://")
+func IsUrl(_url string) bool {
+  arr := strings.Split(_url, "://")
   if len(arr) < 2 {
     for _, fx := range urlSufixes {
-      if strings.HasSuffix(url, fx) {
+      if strings.HasSuffix(_url, fx) {
         return true
       }
     }
     return false
   }
   return true
+}
+
+func PathFromUrl(_url string) (string, error) {
+  if !IsUrl(_url) {
+    return "", errors.New("Invalid url format")
+  }
+  u, err := url.Parse(_url)
+  if nil != err {
+    return "", err
+  }
+  return u.Host + u.Path, nil
 }
