@@ -252,3 +252,11 @@ func ProjectPathFromUrl(u string) (string, error) {
   }
   return fmt.Sprintf("%s%s", _url.Host, _url.Path), nil
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// Other
+///////////////////////////////////////////////////////////////////////////////
+
+func FindProjectDirFrom(dir string) (string, error) {
+  return findParentDirWithFile(dir, ".goproj")
+}

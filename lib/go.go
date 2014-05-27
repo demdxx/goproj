@@ -20,13 +20,16 @@ func (g *goProc) init() {
   g.Path = "go" // TODO detect `go` path
 }
 
-func (g goProc) run(args ...string) (err error) {
+func (g goProc) run(args ...string) error {
   fmt.Println(">", g.Path, args)
   cmd := exec.Command(g.Path, args...)
   cmd.Stdout = os.Stdout
   cmd.Stderr = os.Stderr
   cmd.Stdin = os.Stdin
-  return cmd.Run()
+  if err := cmd.Start(); nil != err {
+    return err
+  }
+  return cmd.Wait()
 }
 
 ///////////////////////////////////////////////////////////////////////////////

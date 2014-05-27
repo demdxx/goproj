@@ -74,6 +74,9 @@ func main() {
         fmt.Print(lib.GoPath())
       }
       break
+    case "path":
+      printProjectPath(pwd)
+      break
     case "info":
       printInfo(pwd)
       break
@@ -185,6 +188,11 @@ func printHelp() {
 
   fmt.Print("\n")
   flag.PrintDefaults()
+}
+
+func printProjectPath(dir string) {
+  projdir, _ := lib.FindProjectDirFrom(dir)
+  fmt.Print(projdir)
 }
 
 func printInfo(dir string) {
