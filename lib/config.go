@@ -7,40 +7,20 @@
 package lib
 
 import (
-  "bufio"
-  "bytes"
   "encoding/json"
   "gopkg.in/v1/yaml"
-  "io"
   "io/ioutil"
-  "os"
 )
 
 type Config map[string]interface{}
 
-func (conf *Config) InitFromFile(filepath string) (err error) {
-  file, err := os.Open(filepath)
-  if err != nil {
-    return
-  }
-  defer file.Close()
-
+func (conf Config) InitFromFile(filepath string) (err error) {
   // Load file
-  reader := bufio.NewReader(file)
-  var buffer bytes.Buffer
-  var part []byte
-  for {
-    if part, _, err = reader.ReadLine(); err != nil {
-      break
-    }
-    buffer.Write(part)
-  }
-  if err == io.EOF {
-    err = nil
-  }
+  var data []byte
+  data, err = ioutil.ReadFile(filepath)
+
   if nil == err {
-    // Load solution config
-    data := buffer.Bytes()
+    // Parse solution config
     if '{' == data[0] {
       err = json.Unmarshal(data, &conf)
     } else {
@@ -65,10 +45,26 @@ func (conf Config) Update(c Config, rewrite bool) {
 // Save project
 //
 // @return nil or error
-func (conf *Config) Save(fpath string) error {
-  data, err := yaml.Marshal(*conf)
+func (conf Config) Save(fpath string) error {
+  data, err := yaml.Marshal(conf)
   if nil != err {
     return err
   }
   return ioutil.WriteFile(fpath, data, 0644)
+}
+
+func ConfigConvert(data interface{}) Config {
+  switch data.(type) {
+  case map[string]interface{}:
+    return data.(Config)
+    break
+  case map[interface{}]interface{}:
+    conf := make(Config)
+    for k, v := range data.(map[interface{}]interface{}) {
+      conf[k.(string)] = v
+    }
+    return conf
+    break
+  }
+  return nil
 }
