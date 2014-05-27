@@ -13,7 +13,6 @@ import (
   "io/ioutil"
   "os"
   "path/filepath"
-  "reflect"
   "strings"
 )
 
@@ -83,12 +82,13 @@ func (sol *Solution) Init(path string) (err error) {
   // Each config
   if projects, ok := sol.Config["projects"]; ok {
     if nil != projects {
-      fmt.Println(reflect.ValueOf(projects))
       switch projects.(type) {
       case map[interface{}]interface{}:
-        for dir, conf := range projects.(map[interface{}]interface{}) {
+      case map[string]interface{}:
+        projs := ToStringMap(projects)
+        for dir, conf := range projs {
           var proj *Project
-          proj, err = ProjectFromFile(sol.Path, dir.(string), ConfigConvert(conf))
+          proj, err = ProjectFromFile(sol.Path, dir, ConfigConvert(conf))
           if nil == err && nil != proj {
             err = sol.AddProject(proj)
           }

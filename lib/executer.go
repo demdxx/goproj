@@ -78,6 +78,7 @@ func getPath(e interface{}) string {
 
 func getFullPath(e interface{}) string {
   sol := getSolution(e)
+  fmt.Println("getFullPath", sol.Path, getPath(e))
   return fmt.Sprintf("%s/src/%s", sol.Path, getPath(e))
 }
 
@@ -174,16 +175,41 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
   }
 
   if !isEmpty(command) {
-    // Prepare command
-    var err error
-    if command, err = prepareCommand(e, command, flags); nil != err {
-      return err
-    }
-
     // Execute command
     switch command.(type) {
     case string:
+      // Prepare command
+      var err error
+      if command, err = prepareCommand(e, command, flags); nil != err {
+        return err
+      }
       return run(e, command.(string))
+      break
+    case []interface{}:
+      var err error
+      var cmd interface{}
+      for _, c := range command.([]interface{}) {
+        // Prepare command
+        if cmd, err = prepareCommand(e, c, flags); nil != err {
+          return err
+        }
+        if err = run(e, cmd.(string)); nil != err {
+          return err
+        }
+      }
+      break
+    case []string:
+      var err error
+      var cmd interface{}
+      for _, c := range command.([]string) {
+        // Prepare command
+        if cmd, err = prepareCommand(e, c, flags); nil != err {
+          return err
+        }
+        if err = run(e, cmd.(string)); nil != err {
+          return err
+        }
+      }
       break
     }
   }

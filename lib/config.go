@@ -56,12 +56,17 @@ func (conf Config) Save(fpath string) error {
 func ConfigConvert(data interface{}) Config {
   switch data.(type) {
   case map[string]interface{}:
-    return data.(Config)
+    conf := make(Config)
+    for k, v := range data.(map[string]interface{}) {
+      conf[k] = v
+    }
+    return conf
     break
   case map[interface{}]interface{}:
+    data = ToStringMap(data)
     conf := make(Config)
-    for k, v := range data.(map[interface{}]interface{}) {
-      conf[k.(string)] = v
+    for k, v := range data.(map[string]interface{}) {
+      conf[k] = v
     }
     return conf
     break
