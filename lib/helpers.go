@@ -72,5 +72,10 @@ func PathFromUrl(_url string) (string, error) {
   if nil != err {
     return "", err
   }
+  for _, fx := range urlSufixes {
+    if strings.HasSuffix(u.Path, fx) {
+      return u.Host + u.Path[:len(u.Path)-len(fx)], nil
+    }
+  }
   return u.Host + u.Path, nil
 }
