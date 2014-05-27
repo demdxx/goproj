@@ -13,6 +13,7 @@ import (
   "io/ioutil"
   "os"
   "path/filepath"
+  "reflect"
   "strings"
 )
 
@@ -82,11 +83,12 @@ func (sol *Solution) Init(path string) (err error) {
   // Each config
   if projects, ok := sol.Config["projects"]; ok {
     if nil != projects {
+      fmt.Println(reflect.ValueOf(projects))
       switch projects.(type) {
-      case map[string]interface{}:
-        for dir, conf := range projects.(map[string]interface{}) {
+      case map[interface{}]interface{}:
+        for dir, conf := range projects.(map[interface{}]interface{}) {
           var proj *Project
-          proj, err = ProjectFromFile(sol.Path, dir, Config(conf.(map[string]interface{})))
+          proj, err = ProjectFromFile(sol.Path, dir.(string), ConfigConvert(conf))
           if nil == err && nil != proj {
             err = sol.AddProject(proj)
           }
@@ -276,9 +278,17 @@ func (proj *Project) SolutionPath() string {
   return ""
 }
 
+func (proj Project) Solution() *Solution {
+  return proj.Owner.(*Solution)
+}
+
 func (dep *Dependency) SolutionPath() string {
   if nil != dep.Owner {
     return dep.Owner.(*Project).SolutionPath()
   }
   return ""
+}
+
+func (dep Dependency) Solution() *Solution {
+  return dep.Owner.(*Project).Solution()
 }

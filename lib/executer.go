@@ -28,6 +28,24 @@ type CommandExecutor interface {
 /// Prepare
 ///////////////////////////////////////////////////////////////////////////////
 
+func getSolution(e interface{}) *Solution {
+  switch e.(type) {
+  case Dependency:
+    return e.(Dependency).Solution()
+    break
+  case *Dependency:
+    return e.(*Dependency).Solution()
+    break
+  case Project:
+    return e.(Project).Solution()
+    break
+  case *Project:
+    return e.(*Project).Solution()
+    break
+  }
+  return nil
+}
+
 func getSolutionPath(e interface{}) string {
   switch e.(type) {
   case *Dependency:
@@ -56,6 +74,11 @@ func getPath(e interface{}) string {
     break
   }
   return ""
+}
+
+func getFullPath(e interface{}) string {
+  sol := getSolution(e)
+  return fmt.Sprintf("%s/src/%s", sol.Path, getPath(e))
 }
 
 func getApp(e interface{}) string {
@@ -106,6 +129,7 @@ func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interfa
     var s string
     s = strings.Replace(cmd.(string), "{flags}", prapareFlags(flags), -1)
     s = strings.Replace(s, "{solutionpath}", getSolutionPath(e), -1)
+    s = strings.Replace(s, "{fullpath}", getFullPath(e), -1)
     s = strings.Replace(s, "{path}", getPath(e), -1)
     s = strings.Replace(s, "{app}", getApp(e), -1)
     s = strings.Replace(s, "{go}", goproc.Path, -1)

@@ -12,9 +12,9 @@ import (
 )
 
 var CVS_tpl = map[string]string{
-  "git": "git clone {url} {path}",
-  "hg":  "hg clone {url} {path}",
-  "bzr": "bzr branch {url} {path}",
+  "git": "git clone {url} {fullpath}",
+  "hg":  "hg clone {url} {fullpath}",
+  "bzr": "bzr branch {url} {fullpath}",
   "go":  "go get {flags} {url}",
 }
 
