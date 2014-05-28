@@ -69,3 +69,7 @@ func (d *Dependency) CmdBuild() interface{} {
 func (d *Dependency) CmdRun() interface{} {
   return d.Cmd("run", "")
 }
+
+func (d *Dependency) CmdTest() interface{} {
+  return d.Cmd("test", "{go} test -v {flags} {app}")
+}

@@ -84,7 +84,6 @@ func ToStringMap(data interface{}) map[string]interface{} {
   switch data.(type) {
   case map[string]interface{}:
     return data.(map[string]interface{})
-    break
   case map[interface{}]interface{}:
     m := make(map[string]interface{})
     for k, v := range data.(map[interface{}]interface{}) {
@@ -100,7 +99,7 @@ func ToStringMap(data interface{}) map[string]interface{} {
         break
       }
     }
-    break
+    return m
   }
   return nil
 }

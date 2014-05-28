@@ -245,6 +245,14 @@ func (proj *Project) CmdRun() interface{} {
   return proj.Dependency.CmdRun()
 }
 
+func (proj *Project) CmdTest() interface{} {
+  return proj.Dependency.CmdTest()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Other
+///////////////////////////////////////////////////////////////////////////////
+
 func ProjectPathFromUrl(u string) (string, error) {
   _url, err := url.Parse(u)
   if nil != err {
@@ -252,10 +260,6 @@ func ProjectPathFromUrl(u string) (string, error) {
   }
   return fmt.Sprintf("%s%s", _url.Host, _url.Path), nil
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// Other
-///////////////////////////////////////////////////////////////////////////////
 
 func FindProjectDirFrom(dir string) (string, error) {
   return findParentDirWithFile(dir, ".goproj")

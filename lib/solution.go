@@ -82,10 +82,8 @@ func (sol *Solution) Init(path string) (err error) {
   // Each config
   if projects, ok := sol.Config["projects"]; ok {
     if nil != projects {
-      switch projects.(type) {
-      case map[interface{}]interface{}:
-      case map[string]interface{}:
-        projs := ToStringMap(projects)
+      projs := ToStringMap(projects)
+      if nil != projs {
         for dir, conf := range projs {
           var proj *Project
           proj, err = ProjectFromFile(sol.Path, dir, ConfigConvert(conf))
@@ -96,10 +94,8 @@ func (sol *Solution) Init(path string) (err error) {
             return
           }
         }
-        break
-      default:
+      } else {
         err = errors.New("Config has invalid format in conf.projects section")
-        return
       }
     }
   }

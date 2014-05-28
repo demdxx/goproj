@@ -22,6 +22,7 @@ type CommandExecutor interface {
   CmdGet() interface{}
   CmdBuild() interface{}
   CmdRun() interface{}
+  CmdTest() interface{}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -78,7 +79,7 @@ func getPath(e interface{}) string {
 
 func getFullPath(e interface{}) string {
   sol := getSolution(e)
-  fmt.Println("getFullPath", sol.Path, getPath(e))
+  // fmt.Println("getFullPath", sol.Path, getPath(e))
   return fmt.Sprintf("%s/src/%s", sol.Path, getPath(e))
 }
 
@@ -168,6 +169,9 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
     break
   case "run":
     command = e.CmdRun()
+    break
+  case "test":
+    command = e.CmdTest()
     break
   default:
     command = e.Cmd(cmd, "")
