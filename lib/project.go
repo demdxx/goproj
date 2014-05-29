@@ -82,10 +82,16 @@ func (proj *Project) Init() error {
   switch deps.(type) {
   case []interface{}:
     for _, depconf := range deps.([]interface{}) {
-      if url, ok := depconf.(Config)["url"]; ok {
-        proj.addDependencyByConfig(url.(string), depconf.(Config))
-      } else {
-        return errors.New(fmt.Sprintf("Invalid project[%s] config deps", proj.Path))
+      fmt.Println(depconf, deps)
+      switch depconf.(type) {
+      case string:
+        proj.addDependencyByConfig(depconf.(string), nil)
+      default:
+        if url, ok := depconf.(Config)["url"]; ok {
+          proj.addDependencyByConfig(url.(string), depconf.(Config))
+        } else {
+          return errors.New(fmt.Sprintf("Invalid project[%s] config deps", proj.Path))
+        }
       }
     }
   case map[string]interface{}:
