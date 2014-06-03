@@ -34,7 +34,12 @@ func (d *Dependency) UpdateEnv() {
 // Get commands array
 func (d *Dependency) Cmds() map[string]interface{} {
   if cmds, ok := d.Config["cmd"]; ok {
-    return cmds.(map[string]interface{})
+    switch cmds.(type) {
+    case map[interface{}]interface{}:
+      return ToStringMap(cmds)
+    case map[string]interface{}:
+      return cmds.(map[string]interface{})
+    }
   }
   return nil
 }
