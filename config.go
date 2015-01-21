@@ -4,12 +4,14 @@
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
 
-package lib
+package goproj
 
 import (
   "encoding/json"
   "gopkg.in/v1/yaml"
   "io/ioutil"
+
+  "github.com/demdxx/gocast"
 )
 
 type Config map[string]interface{}
@@ -61,15 +63,15 @@ func ConfigConvert(data interface{}) Config {
       conf[k] = v
     }
     return conf
-    break
   case map[interface{}]interface{}:
-    data = ToStringMap(data)
     conf := make(Config)
-    for k, v := range data.(map[string]interface{}) {
-      conf[k] = v
+    data, _ = gocast.ToSiMap(data, "")
+    if nil != data {
+      for k, v := range data.(map[string]interface{}) {
+        conf[k] = v
+      }
     }
     return conf
-    break
   }
   return nil
 }

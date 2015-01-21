@@ -1,13 +1,13 @@
-{
-  "project": "goproj",
-  "version": "2.0.0",
-  "license": "cc-by-4.0",
+project: goproj
+version: 2.1.0
+license: CC-BY-4.0
 
-  "cmd": {
-    "run": "{go} run src/{app}/main.go"
-  },
+cmd:
+  main: "src/{app}/cmd/main.go"
+  run: "{go} run {flags} {main}" # it`s default command as for other commands `build` & `install`
 
-  "deps": {
-    "gopkg.in/v1/yaml": {}
-  }
-}
+deps:
+  - gopkg.in/v1/yaml
+  - github.com/demdxx/gocast
+  - gopkg.in/fsnotify.v1
+  #- github.com/howeyc/fsnotify

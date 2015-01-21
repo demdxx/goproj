@@ -1,6 +1,8 @@
 Goproj 2.x.x
 ============
 
+<a href="https://gratipay.com/demdxx/"><img src="//img.shields.io/gratipay/demdxx.svg"></a>
+
 Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 NOTE: Small experementall revision for simple projects
 

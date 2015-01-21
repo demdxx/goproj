@@ -9,16 +9,20 @@ package main
 import (
   "flag"
   "fmt"
-  "goproj/lib"
+  "goproj"
   "log"
   "os"
   "path/filepath"
   "strings"
 )
 
-const version = "2.0.0alpha"
+const version = "2.1.0beta"
 const author = "Dmitry Ponomarev <demdxx@gmail.com>"
 const year = "2014"
+
+var (
+  flagObserver bool = false
+)
 
 var help = map[string]string{
   "init":    "create project structure. goproj init [app-repository] <app-name>",
@@ -45,6 +49,7 @@ func init() {
   for k, v := range help {
     flag.Set(k, v)
   }
+  flag.BoolVar(&flagObserver, "observer", false, "monitor and automatically restart")
   flag.Usage = printHelp
 }
 
@@ -56,7 +61,7 @@ func main() {
   }
 
   if flag.NArg() > 0 {
-    switch os.Args[1] {
+    switch os.Args[len(os.Args)-1] {
     case "init":
       cmdInitSolution(pwd, os.Args[2:])
       break
@@ -69,9 +74,9 @@ func main() {
     case "go":
       args := os.Args[2:]
       if len(args) > 0 {
-        lib.GoRun(os.Args[2:]...)
+        goproj.GoRun(os.Args[2:]...)
       } else {
-        fmt.Print(lib.GoPath())
+        fmt.Print(goproj.GoPath())
       }
       break
     case "path":
@@ -87,7 +92,7 @@ func main() {
       printHelp()
       break
     default:
-      cmdExec(pwd, os.Args[1], flag.Args()[1:])
+      cmdExec(pwd, os.Args[len(os.Args)-1], flag.Args()[1:])
     }
   }
 }
@@ -102,15 +107,15 @@ func cmdInitSolution(pwd string, args []string) {
     return
   }
 
-  sol, _ := lib.SolutionFromDir(pwd)
+  sol, _ := goproj.SolutionFromDir(pwd)
   if nil == sol {
-    sol = &lib.Solution{}
+    sol = &goproj.Solution{}
     sol.Init(pwd)
   }
 
   // Add project
   if len(args) > 0 {
-    sol.AddProject(lib.ProjectFromUrl(args...))
+    sol.AddProject(goproj.ProjectFromUrl(args...))
   }
 
   // Init file structure
@@ -173,7 +178,9 @@ func cmdExec(pwd, cmd string, args []string) {
   }
 
   var flags map[string]interface{} = nil // TODO parse all flags
-  if err := sol.CmdExec(cmd, args, flags); nil != err {
+
+  fmt.Println("cmdExec", pwd, ":", cmd, ":", args, flagObserver)
+  if err := sol.CmdExec(cmd, args, flags, flagObserver); nil != err {
     fmt.Println(err)
   }
 }
@@ -191,12 +198,12 @@ func printHelp() {
 }
 
 func printProjectPath(dir string) {
-  projdir, _ := lib.FindProjectDirFrom(dir)
+  projdir, _ := goproj.FindProjectDirFrom(dir)
   fmt.Print(projdir)
 }
 
 func printInfo(dir string) {
-  for k, v := range lib.SolutionEnv(dir) {
+  for k, v := range goproj.SolutionEnv(dir) {
     fmt.Printf("%s=%s\n", k, v)
   }
 }
@@ -205,8 +212,8 @@ func printInfo(dir string) {
 /// Helpers
 ///////////////////////////////////////////////////////////////////////////////
 
-func solution(pwd string) *lib.Solution {
-  sol, err := lib.SolutionFromDir(pwd)
+func solution(pwd string) *goproj.Solution {
+  sol, err := goproj.SolutionFromDir(pwd)
   if nil == sol || nil != err {
     if nil != err {
       log.Print(err)

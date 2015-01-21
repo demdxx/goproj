@@ -4,10 +4,12 @@
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
 
-package lib
+package goproj
 
 import (
   "strings"
+
+  "github.com/demdxx/gocast"
 )
 
 type Dependency struct {
@@ -34,12 +36,8 @@ func (d *Dependency) UpdateEnv() {
 // Get commands array
 func (d *Dependency) Cmds() map[string]interface{} {
   if cmds, ok := d.Config["cmd"]; ok {
-    switch cmds.(type) {
-    case map[interface{}]interface{}:
-      return ToStringMap(cmds)
-    case map[string]interface{}:
-      return cmds.(map[string]interface{})
-    }
+    rt, _ := gocast.ToSiMap(cmds, "")
+    return rt
   }
   return nil
 }
@@ -68,6 +66,11 @@ func (d *Dependency) CmdGet() interface{} {
 // @return {cmd} or ""
 func (d *Dependency) CmdBuild() interface{} {
   return d.Cmd("build", "")
+}
+
+// @return {cmd} or ""
+func (d *Dependency) CmdInstall() interface{} {
+  return d.Cmd("install", "")
 }
 
 // @return {cmd} or ""

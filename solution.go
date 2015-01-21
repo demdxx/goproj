@@ -4,7 +4,7 @@
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
 
-package lib
+package goproj
 
 import (
   "errors"
@@ -14,6 +14,8 @@ import (
   "os"
   "path/filepath"
   "strings"
+
+  "github.com/demdxx/gocast"
 )
 
 type Solution struct {
@@ -82,7 +84,7 @@ func (sol *Solution) Init(path string) (err error) {
   // Each config
   if projects, ok := sol.Config["projects"]; ok {
     if nil != projects {
-      projs := ToStringMap(projects)
+      projs, _ := gocast.ToSiMap(projects, "")
       if nil != projs {
         for dir, conf := range projs {
           var proj *Project
@@ -168,7 +170,7 @@ func (sol *Solution) SaveConfig() error {
 /// Actions
 ///////////////////////////////////////////////////////////////////////////////
 
-func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
+func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}, observe bool) error {
   if nil != sol.Projects && len(sol.Projects) > 0 {
     // Process command
     for _, p := range sol.Projects {
@@ -177,7 +179,7 @@ func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interfa
         sol.UpdateEnv()
 
         // Do exec
-        if err := p.CmdExec(cmd, args, flags); nil != err {
+        if err := p.CmdExec(cmd, args, flags, observe); nil != err {
           return err
         }
       }
@@ -192,13 +194,18 @@ func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interfa
 
 func (sol *Solution) EnvPath() string {
   PATH := os.Getenv("PATH")
-  return fmt.Sprintf("%s/bin:%s", strings.TrimRight(sol.Path, "/"), PATH)
+  return fmt.Sprintf("%s:%s", sol.BinPath(), PATH)
+}
+
+func (sol *Solution) BinPath() string {
+  return fmt.Sprintf("%s/bin", strings.TrimRight(sol.Path, "/"))
 }
 
 func (sol *Solution) UpdateEnv() {
   if !sol.IsGlobal {
     os.Setenv("GOPATH", sol.Path)
     os.Setenv("PATH", sol.EnvPath())
+    os.Setenv("GOBIN", sol.BinPath())
   }
 }
 
@@ -245,19 +252,23 @@ func HasSolution(dir string) bool {
 // @param dir path
 // @return map{GOPATH,PATH,GO}
 func SolutionEnv(dir string) map[string]string {
-  var GOPATH, PATH string
+  var GOPATH, GOBIN, PATH string
   PATH = os.Getenv("PATH")
+  GOBIN = os.Getenv("GOBIN")
 
   sol, _ := SolutionFromDir(dir)
   if nil != sol && !sol.IsGlobal {
     GOPATH = sol.Path
+    GOBIN = sol.BinPath()
     PATH = sol.EnvPath()
   } else {
     GOPATH = os.Getenv("GOPATH")
-    PATH = fmt.Sprintf("%s/bin:%s", strings.TrimRight(GOPATH, "/"), PATH)
+    GOBIN = fmt.Sprintf("%s/bin", strings.TrimRight(GOPATH, "/"))
+    PATH = fmt.Sprintf("%s:%s", GOBIN, PATH)
   }
   return map[string]string{
     "GOPATH": GOPATH,
+    "GOBIN":  GOBIN,
     "PATH":   PATH,
     "GO":     GoPath(),
   }

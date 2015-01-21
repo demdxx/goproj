@@ -4,7 +4,7 @@
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
 
-package lib
+package goproj
 
 import (
   "errors"
@@ -80,26 +80,26 @@ func PathFromUrl(_url string) (string, error) {
   return u.Host + u.Path, nil
 }
 
-func ToStringMap(data interface{}) map[string]interface{} {
-  switch data.(type) {
-  case map[string]interface{}:
-    return data.(map[string]interface{})
-  case map[interface{}]interface{}:
-    m := make(map[string]interface{})
-    for k, v := range data.(map[interface{}]interface{}) {
-      switch k.(type) {
-      case string:
-        switch v.(type) {
-        case map[interface{}]interface{}:
-          m[k.(string)] = ToStringMap(v)
-          break
-        default:
-          m[k.(string)] = v
-        }
-        break
-      }
-    }
-    return m
-  }
-  return nil
-}
+// func ToStringMap(data interface{}) map[string]interface{} {
+//   switch data.(type) {
+//   case map[string]interface{}:
+//     return data.(map[string]interface{})
+//   case map[interface{}]interface{}:
+//     m := make(map[string]interface{})
+//     for k, v := range data.(map[interface{}]interface{}) {
+//       switch k.(type) {
+//       case string:
+//         switch v.(type) {
+//         case map[interface{}]interface{}:
+//           m[k.(string)] = ToStringMap(v)
+//           break
+//         default:
+//           m[k.(string)] = v
+//         }
+//         break
+//       }
+//     }
+//     return m
+//   }
+//   return nil
+// }

@@ -1,13 +1,22 @@
-package lib
+// @project goproj
+// @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
+//
+// This work is licensed under the Creative Commons Attribution 4.0 International License.
+// To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+
+package goproj
 
 import (
   "bytes"
   "errors"
   "fmt"
+  "log"
   "os"
   "os/exec"
   "strconv"
   "strings"
+
+  "github.com/demdxx/gocast"
 )
 
 type CommandExecutor interface {
@@ -21,6 +30,7 @@ type CommandExecutor interface {
 
   CmdGet() interface{}
   CmdBuild() interface{}
+  CmdInstall() interface{}
   CmdRun() interface{}
   CmdTest() interface{}
 }
@@ -79,7 +89,6 @@ func getPath(e interface{}) string {
 
 func getFullPath(e interface{}) string {
   sol := getSolution(e)
-  // fmt.Println("getFullPath", sol.Path, getPath(e))
   return fmt.Sprintf("%s/src/%s", sol.Path, getPath(e))
 }
 
@@ -128,20 +137,46 @@ func prapareFlags(flags map[string]interface{}) string {
 func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interface{}) (interface{}, error) {
   switch cmd.(type) {
   case string:
-    var s string
-    s = strings.Replace(cmd.(string), "{flags}", prapareFlags(flags), -1)
-    s = strings.Replace(s, "{solutionpath}", getSolutionPath(e), -1)
-    s = strings.Replace(s, "{fullpath}", getFullPath(e), -1)
-    s = strings.Replace(s, "{path}", getPath(e), -1)
-    s = strings.Replace(s, "{app}", getApp(e), -1)
-    s = strings.Replace(s, "{go}", goproc.Path, -1)
+    s := cmd.(string)
+    params, err := gocast.ToStringMap(e.Cmds(), "")
+    if nil != err {
+      log.Panic(err)
+      return "", nil
+    } else if len(params) > 0 {
+      for k, v := range params {
+        s = strings.Replace(s, "{"+k+"}", v, -1)
+      }
+    }
+
+    params = make(map[string]string)
+    params["flags"] = prapareFlags(flags)
+    params["solutionpath"] = getSolutionPath(e)
+    params["fullpath"] = getFullPath(e)
+    params["path"] = getPath(e)
+    params["app"] = getApp(e)
+    params["go"] = goproc.Path
+
+    for k, v := range params {
+      s = strings.Replace(s, "{"+k+"}", v, -1)
+    }
     return s, nil
-    break
   }
   return "", errors.New("Prepare command failed")
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// Exec
+///////////////////////////////////////////////////////////////////////////////
+
 func run(e CommandExecutor, command string) error {
+  cmd, err := runCommand(e, command)
+  if nil != err {
+    return err
+  }
+  return cmd.Wait()
+}
+
+func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
   e.UpdateEnv()
   fmt.Println(">", command)
   cmd := exec.Command("sh", "-c", command)
@@ -149,34 +184,45 @@ func run(e CommandExecutor, command string) error {
   cmd.Stderr = os.Stderr
   cmd.Stdin = os.Stdin
   if err := cmd.Start(); nil != err {
-    return err
+    return nil, err
   }
-  return cmd.Wait()
+  return cmd, nil
+}
+
+func runObserver(e CommandExecutor, command, path string) error {
+  cmd, err := runCommand(e, command)
+  if nil == err {
+    done := make(chan error, 1)
+    go func() { done <- cmd.Wait() }()
+
+    fmt.Println("fsObserve")
+    fsObserve(path, func() bool { // Restart command here
+      fmt.Println("Restart...")
+      <-done // Exit goroutine
+      if err := cmd.Process.Kill(); err != nil {
+        log.Println("Failed to kill: ", err)
+      }
+
+      // Restart command
+      done = make(chan error, 1)
+      cmd, err := runCommand(e, command)
+      if nil == err {
+        go func() { done <- cmd.Wait() }()
+      } else {
+        log.Println("Failed run command: ", err)
+      }
+      return true
+    })
+  }
+  return err
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Actions
 ///////////////////////////////////////////////////////////////////////////////
 
-func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error {
-  var command interface{} = nil
-  switch cmd {
-  case "get":
-    command = e.CmdGet()
-    break
-  case "build":
-    command = e.CmdBuild()
-    break
-  case "run":
-    command = e.CmdRun()
-    break
-  case "test":
-    command = e.CmdTest()
-    break
-  default:
-    command = e.Cmd(cmd, "")
-    break
-  }
+func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observe bool) error {
+  command := getCmd(e, cmd)
 
   if !isEmpty(command) {
     // Execute command
@@ -187,8 +233,10 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
       if command, err = prepareCommand(e, command, flags); nil != err {
         return err
       }
+      if observe {
+        return runObserver(e, command.(string), getSolutionPath(e))
+      }
       return run(e, command.(string))
-      break
     case []interface{}:
       var err error
       var cmd interface{}
@@ -197,7 +245,12 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
         if cmd, err = prepareCommand(e, c, flags); nil != err {
           return err
         }
-        if err = run(e, cmd.(string)); nil != err {
+
+        if observe {
+          if err = runObserver(e, cmd.(string), getSolutionPath(e)); nil != err {
+            return err
+          }
+        } else if err = run(e, cmd.(string)); nil != err {
           return err
         }
       }
@@ -210,7 +263,12 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
         if cmd, err = prepareCommand(e, c, flags); nil != err {
           return err
         }
-        if err = run(e, cmd.(string)); nil != err {
+
+        if observe {
+          if err = runObserver(e, cmd.(string), getSolutionPath(e)); nil != err {
+            return err
+          }
+        } else if err = run(e, cmd.(string)); nil != err {
           return err
         }
       }
@@ -219,4 +277,21 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}) error 
   }
 
   return nil // errors.New(fmt.Sprintf("Unsupport command: %s", cmd))
+}
+
+func getCmd(e CommandExecutor, cmd string) interface{} {
+  switch cmd {
+  case "get":
+    return e.CmdGet()
+  case "build":
+    return e.CmdBuild()
+  case "install":
+    return e.CmdInstall()
+  case "run":
+    return e.CmdRun()
+  case "test":
+    return e.CmdTest()
+  default:
+    return e.Cmd(cmd, "")
+  }
 }

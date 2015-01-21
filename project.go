@@ -4,7 +4,7 @@
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
 
-package lib
+package goproj
 
 import (
   "errors"
@@ -167,16 +167,16 @@ func (proj *Project) UpdateEnv() {
 /// Actions
 ///////////////////////////////////////////////////////////////////////////////
 
-func (proj *Project) CmdExec(cmd string, args []string, flags map[string]interface{}) error {
+func (proj *Project) CmdExec(cmd string, args []string, flags map[string]interface{}, observe bool) error {
   // Before run for dependencies
   if (nil == args || len(args) < 1) && nil != proj.Deps && len(proj.Deps) > 0 {
     for _, d := range proj.Deps {
-      execute(d, cmd, flags)
+      execute(d, cmd, flags, observe)
     }
   }
 
   // Run commands for me
-  return execute(proj, cmd, flags)
+  return execute(proj, cmd, flags, observe)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -245,6 +245,10 @@ func (proj *Project) CmdGet() interface{} {
 // @return {go} build {flags} {app} or custom
 func (proj *Project) CmdBuild() interface{} {
   return proj.Cmd("build", "{go} build {flags} {app}")
+}
+
+func (proj *Project) CmdInstall() interface{} {
+  return proj.Cmd("install", "{go} install {flags} {app}")
 }
 
 func (proj *Project) CmdRun() interface{} {
