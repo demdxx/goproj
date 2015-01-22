@@ -7,6 +7,7 @@
 package main
 
 import (
+  "errors"
   "flag"
   "fmt"
   "goproj"
@@ -54,6 +55,11 @@ func init() {
 }
 
 func main() {
+  if len(os.Args) < 2 {
+    printHelp()
+    return
+  }
+
   arg1 := os.Args[0]
   cmd := os.Args[1]
   os.Args = os.Args[1:]
@@ -65,40 +71,38 @@ func main() {
     pwd = filepath.Dir(os.Args[0])
   }
 
-  if flag.NArg() > 0 {
-    switch cmd {
-    case "init":
-      cmdInitSolution(pwd, os.Args[1:])
-      break
-    case "deps":
-      cmdDepList(pwd)
-      break
-    case "list":
-      cmdProjList(pwd)
-      break
-    case "go":
-      args := os.Args[1:]
-      if len(args) > 0 {
-        goproj.GoRun(os.Args[1:]...)
-      } else {
-        fmt.Print(goproj.GoPath())
-      }
-      break
-    case "path":
-      printProjectPath(pwd)
-      break
-    case "info":
-      printInfo(pwd)
-      break
-    case "version":
-      fmt.Printf("Goproj %s %s %s\n", version, author, year)
-      break
-    case "help":
-      printHelp()
-      break
-    default:
-      cmdExec(pwd, cmd, flag.Args())
+  switch cmd {
+  case "init":
+    cmdInitSolution(pwd, os.Args[1:])
+    break
+  case "deps":
+    cmdDepList(pwd)
+    break
+  case "list":
+    cmdProjList(pwd)
+    break
+  case "go":
+    args := os.Args[1:]
+    if len(args) > 0 {
+      goproj.GoRun(os.Args[1:]...)
+    } else {
+      fmt.Print(goproj.GoPath())
     }
+    break
+  case "path":
+    printProjectPath(pwd)
+    break
+  case "info":
+    printInfo(pwd)
+    break
+  case "version":
+    fmt.Printf("Goproj %s %s %s\n", version, author, year)
+    break
+  case "help":
+    printHelp()
+    break
+  default:
+    cmdExec(pwd, cmd, flag.Args())
   }
 }
 
@@ -115,7 +119,16 @@ func cmdInitSolution(pwd string, args []string) {
   var project *goproj.Project = nil
 
   // Get or create solution for dir
-  sol, _ := goproj.SolutionForDir(pwd)
+  sol, err := goproj.SolutionForDir(pwd)
+  if nil != err {
+    log.Fatal(err)
+  }
+
+  fmt.Println("sol.IsGlobal", sol, sol.IsGlobal)
+
+  if sol.IsGlobal {
+    log.Fatal(errors.New("You can`t init project for global solution"))
+  }
 
   // Add project
   if len(args) > 0 {
@@ -126,17 +139,17 @@ func cmdInitSolution(pwd string, args []string) {
   // Init solution file structure
   if nil != project {
     if err := sol.InitFileStruct(project.Name); nil != err {
-      log.Print(err)
+      log.Fatal(err)
       return
     }
   } else if err := sol.InitFileStruct(); nil != err {
-    log.Print(err)
+    log.Fatal(err)
     return
   }
 
   // Save config files
   if err := sol.SaveConfig(); nil != err {
-    log.Print(err)
+    log.Fatal(err)
     return
   }
 }
@@ -212,8 +225,13 @@ func printProjectPath(dir string) {
 }
 
 func printInfo(dir string) {
-  for k, v := range goproj.SolutionEnv(dir) {
-    fmt.Printf("%s=%s\n", k, v)
+  env := goproj.SolutionEnv(dir)
+  if len(env) < 1 {
+    fmt.Println("Go environment for global projects not configured: GOPATH, GOBIN")
+  } else {
+    for k, v := range goproj.SolutionEnv(dir) {
+      fmt.Printf("%s=%s\n", k, v)
+    }
   }
 }
 

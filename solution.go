@@ -29,7 +29,8 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
   ndir, err := FindSolutionDirFrom(dir)
   if nil != err {
     // We don't have .gosolution then check .goproj
-    pdir, err := findParentDirWithFile(dir, ".goproj")
+    var pdir string
+    pdir, err = findParentDirWithFile(dir, ".goproj")
     if nil != err {
       return nil, err
     }
@@ -37,15 +38,15 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
     // Init global solution
     GOPATH := os.Getenv("GOPATH")
     if len(GOPATH) < 1 {
-      err = errors.New("For global solution project need set enviroment GOPATH")
+      err = ErrorGoEnvironmentNotConfigured
     } else {
       err = nil
-      sol = new(Solution)
+      sol = &Solution{Path: GOPATH, Config: Config{}}
       sol.IsGlobal = true
       sol.Config["projects"] = map[string]interface{}{
         pdir: map[string]interface{}{}, // Empty config
       }
-      return sol, sol.Init(GOPATH)
+      err = sol.Init(GOPATH)
     }
   } else {
     // Init solution from file
@@ -54,12 +55,28 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
   return
 }
 
+// Get global solution
+func SolutionGlobal() (sol *Solution, err error) {
+  // Init global solution
+  GOPATH := os.Getenv("GOPATH")
+  if len(GOPATH) < 1 {
+    err = ErrorGoEnvironmentNotConfigured
+  } else {
+    err = nil
+    sol = &Solution{Path: GOPATH, Config: Config{}}
+    sol.IsGlobal = true
+    sol.Config["projects"] = map[string]interface{}{} // Empty config
+    err = sol.Init(GOPATH)
+  }
+  return
+}
+
 // Get or init solution in any cases
 func SolutionForDir(dir string) (sol *Solution, err error) {
   sol, err = SolutionFromDir(dir)
-  if nil == sol || nil != err {
+  if (nil == sol || nil != err) && ErrorGoEnvironmentNotConfigured != err {
     err = nil
-    sol = new(Solution)
+    sol = &Solution{Path: dir, Config: Config{}}
     sol.Init(dir)
   }
   return
@@ -123,7 +140,7 @@ func (sol *Solution) Init(path string) (err error) {
 // .gosolution
 func (sol *Solution) InitFileStruct(projects ...string) error {
   if len(sol.Path) < 1 {
-    return errors.New("Solution path not defined")
+    return ErrorSolutionPath
   }
   if err := makeDir(sol.Path); nil != err {
     return err
@@ -158,6 +175,10 @@ func (sol *Solution) InitFileStruct(projects ...string) error {
     }
   }
 
+  if sol.IsGlobal {
+    return nil
+  }
+
   // Create solution
   return sol.SaveConfig()
 }
@@ -166,6 +187,10 @@ func (sol *Solution) InitFileStruct(projects ...string) error {
 //
 // @return nil or error
 func (sol *Solution) SaveConfig() error {
+  if sol.IsGlobal {
+    return ErrorGlobalSolutionSaveInvalid
+  }
+
   projects := make(map[string]interface{})
 
   for _, p := range sol.Projects {
@@ -286,6 +311,7 @@ func SolutionEnv(dir string) map[string]string {
     GOBIN = fmt.Sprintf("%s/bin", strings.TrimRight(GOPATH, "/"))
     PATH = fmt.Sprintf("%s:%s", GOBIN, PATH)
   }
+
   return map[string]string{
     "GOPATH": GOPATH,
     "GOBIN":  GOBIN,

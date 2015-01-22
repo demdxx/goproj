@@ -13,6 +13,7 @@ import (
   "log"
   "os"
   "os/exec"
+  "path/filepath"
   "strconv"
   "strings"
 
@@ -88,8 +89,12 @@ func getPath(e interface{}) string {
 }
 
 func getFullPath(e interface{}) string {
+  path := getPath(e)
+  if filepath.IsAbs(path) {
+    return path
+  }
   sol := getSolution(e)
-  return fmt.Sprintf("%s/src/%s", sol.Path, getPath(e))
+  return fmt.Sprintf("%s/src/%s", sol.Path, path)
 }
 
 func getApp(e interface{}) string {

@@ -10,6 +10,7 @@ import (
   "errors"
   "fmt"
   "net/url"
+  "path/filepath"
   "strings"
 
   "github.com/demdxx/gocast"
@@ -276,7 +277,7 @@ func (proj *Project) ProjectFileFullPath() string {
 }
 
 func ProjectFullPathFor(solpath, path string) string {
-  if len(solpath) > 0 {
+  if len(solpath) > 0 && !filepath.IsAbs(path) {
     return fmt.Sprintf("%s/src/%s/", solpath, path)
   }
   return path + "/"
