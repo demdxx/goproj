@@ -10,8 +10,9 @@ import (
   "errors"
   "fmt"
   "net/url"
-  "path/filepath"
   "strings"
+
+  "github.com/demdxx/gocast"
 )
 
 type Project struct {
@@ -37,20 +38,15 @@ func ProjectFromUrl(args ...string) *Project {
   } else {
     p.Path = args[0]
   }
+  p.Name = p.Path
+  p.Config = Config{"project": p.Name}
   return p
 }
 
 func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err error) {
   name := projpath
-  if !filepath.IsAbs(projpath) {
-    projpath, err = filepath.Abs(solpath + "/src/" + projpath)
-    if nil != err {
-      return
-    }
-  }
-
-  projConf := Config{}
-  if err = projConf.InitFromFile(projpath + "/.goproj"); nil != err {
+  projConf := Config{"project": name}
+  if err = projConf.InitFromFile(ProjectFileFullPathFor(solpath, projpath)); nil != err {
     return
   }
 
@@ -65,6 +61,14 @@ func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err 
 
   // Merge local and global config
   proj.Config.Update(conf, false)
+  if _, ok := proj.Config["version"]; !ok {
+    proj.Config["version"] = "0"
+  }
+
+  if url, ok := proj.Config["url"]; ok {
+    proj.Dependency.Url = gocast.ToString(url)
+  }
+
   err = proj.Init()
   return
 }
@@ -82,7 +86,6 @@ func (proj *Project) Init() error {
   switch deps.(type) {
   case []interface{}:
     for _, depconf := range deps.([]interface{}) {
-      fmt.Println(depconf, deps)
       switch depconf.(type) {
       case string:
         proj.addDependencyByConfig(depconf.(string), nil)
@@ -104,7 +107,7 @@ func (proj *Project) Init() error {
 
 func (proj *Project) ReloadConfig() (err error) {
   projConf := Config{}
-  if err = projConf.InitFromFile(proj.Path + "/.goproj"); nil != err {
+  if err = projConf.InitFromFile(proj.ProjectFullPath()); nil != err {
     return
   }
 
@@ -116,10 +119,10 @@ func (proj *Project) ReloadConfig() (err error) {
 // Init FS struct
 //
 // .goproj
-func (proj *Project) InitFileStruct(dir string) error {
+func (proj *Project) InitFileStruct(solpath string) error {
   if len(proj.Path) < 1 {
     if len(proj.Url) > 0 {
-      path, err := ProjectPathFromUrl(proj.Path)
+      path, err := ProjectPathFromUrl(proj.Url)
       if nil != err {
         return err
       }
@@ -128,7 +131,7 @@ func (proj *Project) InitFileStruct(dir string) error {
       return errors.New("Solution path not defined")
     }
   }
-  if err := makeDir(dir + "/" + proj.Path); nil != err {
+  if err := makeDir(ProjectFullPathFor(solpath, proj.Path)); nil != err {
     return err
   }
 
@@ -141,6 +144,7 @@ func (proj *Project) InitFileStruct(dir string) error {
     if command, err = prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil); nil != err {
       return err
     }
+
     if err := run(proj, command.(string)); nil != err {
       return err
     }
@@ -155,7 +159,7 @@ func (proj *Project) InitFileStruct(dir string) error {
 //
 // @return nil or error
 func (proj *Project) SaveConfig() error {
-  return proj.Config.Save(fmt.Sprintf("%s/.goproj", proj.Path))
+  return proj.Config.Save(proj.ProjectFileFullPath())
 }
 
 // TODO Init enviroment before run any command
@@ -257,6 +261,29 @@ func (proj *Project) CmdRun() interface{} {
 
 func (proj *Project) CmdTest() interface{} {
   return proj.Dependency.CmdTest()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///////////////////////////////////////////////////////////////////////////////
+
+func (proj *Project) ProjectFullPath() string {
+  return ProjectFullPathFor(proj.SolutionPath(), proj.Path)
+}
+
+func (proj *Project) ProjectFileFullPath() string {
+  return ProjectFileFullPathFor(proj.SolutionPath(), proj.Path)
+}
+
+func ProjectFullPathFor(solpath, path string) string {
+  if len(solpath) > 0 {
+    return fmt.Sprintf("%s/src/%s/", solpath, path)
+  }
+  return path + "/"
+}
+
+func ProjectFileFullPathFor(solpath, path string) string {
+  return ProjectFullPathFor(solpath, path) + "/.goproj"
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -54,6 +54,17 @@ func SolutionFromDir(dir string) (sol *Solution, err error) {
   return
 }
 
+// Get or init solution in any cases
+func SolutionForDir(dir string) (sol *Solution, err error) {
+  sol, err = SolutionFromDir(dir)
+  if nil == sol || nil != err {
+    err = nil
+    sol = new(Solution)
+    sol.Init(dir)
+  }
+  return
+}
+
 func SolutionFromFile(fpath string) (sol *Solution, err error) {
   conf := Config{}
   if err = conf.InitFromFile(fpath); nil == err {
@@ -110,7 +121,7 @@ func (sol *Solution) Init(path string) (err error) {
 // pkg/
 // src/
 // .gosolution
-func (sol *Solution) InitFileStruct() error {
+func (sol *Solution) InitFileStruct(projects ...string) error {
   if len(sol.Path) < 1 {
     return errors.New("Solution path not defined")
   }
@@ -132,7 +143,16 @@ func (sol *Solution) InitFileStruct() error {
   // Process initialize projects
   if nil != sol.Projects && len(sol.Projects) > 0 {
     for _, p := range sol.Projects {
-      if err := p.InitFileStruct(sol.Path + "/src/"); nil != err {
+      if nil != projects && len(projects) > 0 {
+        for _, projName := range projects {
+          if projName == p.Path || projName == p.Name {
+            if err := p.InitFileStruct(sol.Path); nil != err {
+              return err
+            }
+            break
+          }
+        }
+      } else if err := p.InitFileStruct(sol.Path); nil != err {
         return err
       }
     }

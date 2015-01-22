@@ -54,6 +54,11 @@ func init() {
 }
 
 func main() {
+  arg1 := os.Args[0]
+  cmd := os.Args[1]
+  os.Args = os.Args[1:]
+  os.Args[0] = arg1
+
   flag.Parse()
   pwd, err := os.Getwd()
   if nil != err {
@@ -61,9 +66,9 @@ func main() {
   }
 
   if flag.NArg() > 0 {
-    switch os.Args[len(os.Args)-1] {
+    switch cmd {
     case "init":
-      cmdInitSolution(pwd, os.Args[2:])
+      cmdInitSolution(pwd, os.Args[1:])
       break
     case "deps":
       cmdDepList(pwd)
@@ -72,9 +77,9 @@ func main() {
       cmdProjList(pwd)
       break
     case "go":
-      args := os.Args[2:]
+      args := os.Args[1:]
       if len(args) > 0 {
-        goproj.GoRun(os.Args[2:]...)
+        goproj.GoRun(os.Args[1:]...)
       } else {
         fmt.Print(goproj.GoPath())
       }
@@ -92,13 +97,13 @@ func main() {
       printHelp()
       break
     default:
-      cmdExec(pwd, os.Args[len(os.Args)-1], flag.Args()[1:])
+      cmdExec(pwd, cmd, flag.Args())
     }
   }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Commands
+/// Shell Commands
 ///////////////////////////////////////////////////////////////////////////////
 
 func cmdInitSolution(pwd string, args []string) {
@@ -107,24 +112,29 @@ func cmdInitSolution(pwd string, args []string) {
     return
   }
 
-  sol, _ := goproj.SolutionFromDir(pwd)
-  if nil == sol {
-    sol = &goproj.Solution{}
-    sol.Init(pwd)
-  }
+  var project *goproj.Project = nil
+
+  // Get or create solution for dir
+  sol, _ := goproj.SolutionForDir(pwd)
 
   // Add project
   if len(args) > 0 {
-    sol.AddProject(goproj.ProjectFromUrl(args...))
+    project = goproj.ProjectFromUrl(args...)
+    sol.AddProject(project)
   }
 
-  // Init file structure
-  if err := sol.InitFileStruct(); nil != err {
+  // Init solution file structure
+  if nil != project {
+    if err := sol.InitFileStruct(project.Name); nil != err {
+      log.Print(err)
+      return
+    }
+  } else if err := sol.InitFileStruct(); nil != err {
     log.Print(err)
     return
   }
 
-  // Save configs
+  // Save config files
   if err := sol.SaveConfig(); nil != err {
     log.Print(err)
     return
@@ -179,7 +189,6 @@ func cmdExec(pwd, cmd string, args []string) {
 
   var flags map[string]interface{} = nil // TODO parse all flags
 
-  fmt.Println("cmdExec", pwd, ":", cmd, ":", args, flagObserver)
   if err := sol.CmdExec(cmd, args, flags, flagObserver); nil != err {
     fmt.Println(err)
   }
