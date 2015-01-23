@@ -1,13 +1,13 @@
 Goproj 2.x.x
 ============
 
-<a href="https://gratipay.com/demdxx/"><img src="//img.shields.io/gratipay/demdxx.svg"></a>
+[![Gratipay](http://img.shields.io/gratipay/demdxx.svg)](https://gratipay.com/demdxx/)
 
 Golang helps organize and manage projects in the language GO, provides a description and deployment of applications and their dependencies.
 NOTE: Small experementall revision for simple projects
 
-    @autor Dmitry Ponomarev <demdxx@gmail.com> 2013
-    @version 1.0.0alpha
+    @autor Dmitry Ponomarev <demdxx@gmail.com> 2013 – 2015
+    @version 2.1.1
     @licese CC-BY-4,0
 
 Install
@@ -20,46 +20,48 @@ go get github.com/demdxx/goproj && go install
 Commands
 ========
 
-```sh
-cd {any-dir-in-solution}
-```
-
-    flags: # eqvals env vars GO{flag}
-      os = mac | linux | freebsd | etc
-      gc = off | {number}
-      arch = arm | i386 | x86_64 | etc
-      -arm -> shortcut for -arch arm
-
 **help** – show help or help [command]
 
 ```sh
 goproj help
 ```
 
-**get** – download and install packages and dependencies.
+Create new project
+------------------
+
+```sh
+cd {solution-folder}
+goproj init {project-name}
+
+# From repository
+goproj init git:http://github.com/Undefined/project [project-name]
+```
+
+Download and install packages and dependencies
+----------------------------------------------
 
 ```sh
 goproj get
 ```
 
-**build** – compile packages and dependencies.
+Compile packages and dependencies
+---------------------------------
 
 ```sh
 goproj build [flags]
 ```
 
-**run** – compile and run Go program.
+Compile and run Go program
+--------------------------
 
 ```sh
 goproj run [project names] [flags]
+
+# OR run in auto restart mode
+# Daemon to observe for a files in your project and automatically restart current command
+
+goproj run [project names] -observer
 ```
-
-TODO
-====
-
- * Postanalize dependencies if custom install
- * Add support .godeps
- * Add update environment flags
 
 License
 =======
