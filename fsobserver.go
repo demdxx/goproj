@@ -24,9 +24,11 @@ func fsObserve(path string, change func() bool) (err error) {
 
   done := make(chan bool)
 
+  watcher.Add(path)
   files, _ := filepath.Glob(path + "/*")
   if nil != files && len(files) > 0 {
     for _, f := range files {
+      log.Println("FILE", f)
       watcher.Add(f)
     }
   } else {

@@ -226,12 +226,14 @@ func printProjectPath(dir string) {
 
 func printInfo(dir string) {
   env := goproj.SolutionEnv(dir)
-  if len(env) < 1 {
+  GOPATH := env["GOPATH"]
+
+  for k, v := range goproj.SolutionEnv(dir) {
+    fmt.Printf("%s=%s\n", k, v)
+  }
+
+  if len(GOPATH) < 1 {
     fmt.Println("Go environment for global projects not configured: GOPATH, GOBIN")
-  } else {
-    for k, v := range goproj.SolutionEnv(dir) {
-      fmt.Printf("%s=%s\n", k, v)
-    }
   }
 }
 

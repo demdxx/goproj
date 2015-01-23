@@ -3,7 +3,7 @@ version: 2.1.0
 license: CC-BY-4.0
 
 cmd:
-  main: "src/{app}/cmd/main.go"
+  main: "{fullpath}/cmd/main.go"
   run: "{go} run {flags} {main}" # it`s default command as for other commands `build` & `install`
 
 deps:

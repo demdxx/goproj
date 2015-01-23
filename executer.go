@@ -13,9 +13,12 @@ import (
   "log"
   "os"
   "os/exec"
+  "os/signal"
   "path/filepath"
+  "runtime/pprof"
   "strconv"
   "strings"
+  "syscall"
 
   "github.com/demdxx/gocast"
 )
@@ -185,6 +188,7 @@ func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
   e.UpdateEnv()
   fmt.Println(">", command)
   cmd := exec.Command("sh", "-c", command)
+  cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
   cmd.Stdout = os.Stdout
   cmd.Stderr = os.Stderr
   cmd.Stdin = os.Stdin
@@ -194,26 +198,49 @@ func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
   return cmd, nil
 }
 
+func killCmd(cmd *exec.Cmd) {
+  if nil != cmd {
+    pid := cmd.Process.Pid
+    if err := syscall.Kill(pid, syscall.SIGTERM); nil != err {
+      log.Println("Failed to kill: ", err)
+    }
+
+    gpid, _ := syscall.Getpgid(pid)
+    if err := syscall.Kill(-gpid, 15); nil != err {
+      log.Println("Failed to kill process group: ", gpid, err)
+    }
+
+    if err := cmd.Process.Signal(os.Kill); nil != err {
+      log.Println("Failed to kill: ", err)
+    } else {
+      cmd.Process.Wait()
+    }
+    cmd = nil
+  }
+}
+
 func runObserver(e CommandExecutor, command, path string) error {
   cmd, err := runCommand(e, command)
   if nil == err {
-    done := make(chan error, 1)
-    go func() { done <- cmd.Wait() }()
-
-    fmt.Println("fsObserve")
-    fsObserve(path, func() bool { // Restart command here
-      fmt.Println("Restart...")
-      <-done // Exit goroutine
-      if err := cmd.Process.Kill(); err != nil {
-        log.Println("Failed to kill: ", err)
+    // capture ctrl+c and stop CPU profiler
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+    go func() {
+      for _ = range c {
+        killCmd(cmd)
+        pprof.StopCPUProfile()
+        os.Exit(1)
       }
+    }()
+
+    // Begin observer for folders in path
+    fsObserve(path, func() bool {
+      fmt.Println("Restart...")
+      killCmd(cmd)
 
       // Restart command
-      done = make(chan error, 1)
-      cmd, err := runCommand(e, command)
-      if nil == err {
-        go func() { done <- cmd.Wait() }()
-      } else {
+      cmd, err = runCommand(e, command)
+      if nil != err {
         log.Println("Failed run command: ", err)
       }
       return true
@@ -228,6 +255,7 @@ func runObserver(e CommandExecutor, command, path string) error {
 
 func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observe bool) error {
   command := getCmd(e, cmd)
+  path := getFullPath(e)
 
   if !isEmpty(command) {
     // Execute command
@@ -239,7 +267,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
         return err
       }
       if observe {
-        return runObserver(e, command.(string), getSolutionPath(e))
+        return runObserver(e, command.(string), path)
       }
       return run(e, command.(string))
     case []interface{}:
@@ -252,7 +280,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
         }
 
         if observe {
-          if err = runObserver(e, cmd.(string), getSolutionPath(e)); nil != err {
+          if err = runObserver(e, cmd.(string), path); nil != err {
             return err
           }
         } else if err = run(e, cmd.(string)); nil != err {
@@ -270,7 +298,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
         }
 
         if observe {
-          if err = runObserver(e, cmd.(string), getSolutionPath(e)); nil != err {
+          if err = runObserver(e, cmd.(string), path); nil != err {
             return err
           }
         } else if err = run(e, cmd.(string)); nil != err {
