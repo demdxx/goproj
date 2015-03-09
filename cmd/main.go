@@ -10,11 +10,12 @@ import (
   "errors"
   "flag"
   "fmt"
-  "goproj"
   "log"
   "os"
   "path/filepath"
   "strings"
+
+  ".."
 )
 
 const version = "2.1.0beta"
