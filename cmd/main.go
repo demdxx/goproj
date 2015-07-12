@@ -1,8 +1,10 @@
+//
 // @project goproj
 // @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
 //
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+//
 
 package main
 
@@ -15,7 +17,7 @@ import (
   "path/filepath"
   "strings"
 
-  ".."
+  "github.com/demdxx/goproj"
 )
 
 const version = "2.1.0beta"
@@ -69,12 +71,12 @@ func main() {
   flag.Parse()
   pwd, err := os.Getwd()
   if nil != err {
-    pwd = filepath.Dir(os.Args[0])
+    pwd = filepath.Dir(arg1)
   }
 
   switch cmd {
   case "init":
-    cmdInitSolution(pwd, os.Args[1:])
+    cmdInitSolution(pwd, os.Args)
     break
   case "deps":
     cmdDepList(pwd)
@@ -93,6 +95,9 @@ func main() {
   case "path":
     printProjectPath(pwd)
     break
+  case "solutionpath":
+    printSolutionPath(pwd)
+    break
   case "info":
     printInfo(pwd)
     break
@@ -103,7 +108,7 @@ func main() {
     printHelp()
     break
   default:
-    cmdExec(pwd, cmd, flag.Args())
+    cmdExec(pwd, cmd, os.Args[1:])
   }
 }
 
@@ -221,8 +226,13 @@ func printHelp() {
 }
 
 func printProjectPath(dir string) {
-  projdir, _ := goproj.FindProjectDirFrom(dir)
-  fmt.Print(projdir)
+  path, _ := goproj.FindProjectDirFrom(dir)
+  fmt.Print(path)
+}
+
+func printSolutionPath(dir string) {
+  path, _ := goproj.FindSolutionDirFrom(dir)
+  fmt.Print(path)
 }
 
 func printInfo(dir string) {

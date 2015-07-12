@@ -1,8 +1,10 @@
+//
 // @project goproj
 // @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
 //
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+//
 
 package goproj
 
@@ -36,7 +38,7 @@ func (d *Dependency) UpdateEnv() {
 // Get commands array
 func (d *Dependency) Cmds() map[string]interface{} {
   if cmds, ok := d.Config["cmd"]; ok {
-    rt, _ := gocast.ToSiMap(cmds, "")
+    rt, _ := gocast.ToSiMap(cmds, "", false)
     return rt
   }
   return nil

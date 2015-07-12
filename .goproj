@@ -1,13 +1,13 @@
 project: goproj
-version: 2.1.0
+version: 2.1.1
 license: CC-BY-4.0
 
 cmd:
   main: "{fullpath}/cmd/main.go"
-  run: "{go} run {flags} {main}" # it`s default command as for other commands `build` & `install`
+  run: "{go} run {flags} {main}"
+  install: "{go} build -o /usr/local/bin/goproj '{main}' {flags} {args}"
 
 deps:
   - gopkg.in/v1/yaml
   - github.com/demdxx/gocast
-  - gopkg.in/fsnotify.v1
-  #- github.com/howeyc/fsnotify
+  - gopkg.in/fsnotify.v1 #- github.com/howeyc/fsnotify

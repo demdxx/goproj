@@ -1,8 +1,10 @@
+//
 // @project goproj
 // @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
 //
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+//
 
 package goproj
 
@@ -92,6 +94,10 @@ func SolutionFromFile(fpath string) (sol *Solution, err error) {
   return
 }
 
+// Init solution by path
+//
+// @param path
+// @return error
 func (sol *Solution) Init(path string) (err error) {
   if len(path) > 0 {
     sol.Path, err = filepath.Abs(path)
@@ -112,7 +118,7 @@ func (sol *Solution) Init(path string) (err error) {
   // Each config
   if projects, ok := sol.Config["projects"]; ok {
     if nil != projects {
-      projs, _ := gocast.ToSiMap(projects, "")
+      projs, _ := gocast.ToSiMap(projects, "", false)
       if nil != projs {
         for dir, conf := range projs {
           var proj *Project
@@ -215,11 +221,39 @@ func (sol *Solution) SaveConfig() error {
 /// Actions
 ///////////////////////////////////////////////////////////////////////////////
 
+// Execute command
+//
+// @param cmd
+// @param args
+// @param flags
+// @param observe
+// @return error
 func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interface{}, observe bool) error {
   if nil != sol.Projects && len(sol.Projects) > 0 {
+    processed := false
+
     // Process command
     for _, p := range sol.Projects {
-      if nil == args || len(args) < 1 || -1 != indexOfStringSlice(args, p.Name) {
+      if nil == args || len(args) < 1 || strings.Contains(p.Name, args[0]) {
+        processed = true
+
+        // Init environment
+        sol.UpdateEnv()
+
+        var args2 []string = nil
+        if nil != args && len(args) > 0 {
+          args2 = args[1:]
+        }
+
+        // Do exec
+        if err := p.CmdExec(cmd, args2, flags, observe); nil != err {
+          return err
+        }
+      }
+    }
+
+    if !processed {
+      for _, p := range sol.Projects {
         // Init environment
         sol.UpdateEnv()
 

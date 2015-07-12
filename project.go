@@ -142,7 +142,7 @@ func (proj *Project) InitFileStruct(solpath string) error {
     var err error
     var command interface{}
 
-    if command, err = prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil); nil != err {
+    if command, err = prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil, nil); nil != err {
       return err
     }
 
@@ -176,12 +176,12 @@ func (proj *Project) CmdExec(cmd string, args []string, flags map[string]interfa
   // Before run for dependencies
   if (nil == args || len(args) < 1) && nil != proj.Deps && len(proj.Deps) > 0 {
     for _, d := range proj.Deps {
-      execute(d, cmd, flags, observe)
+      execute(d, cmd, args, flags, observe)
     }
   }
 
   // Run commands for me
-  return execute(proj, cmd, flags, observe)
+  return execute(proj, cmd, args, flags, observe)
 }
 
 ///////////////////////////////////////////////////////////////////////////////

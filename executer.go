@@ -1,8 +1,10 @@
+//
 // @project goproj
 // @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
 //
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+//
 
 package goproj
 
@@ -142,11 +144,18 @@ func prapareFlags(flags map[string]interface{}) string {
   return buf.String()
 }
 
-func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interface{}) (interface{}, error) {
+func prapareArgs(args []string) string {
+  if nil == args {
+    return ""
+  }
+  return strings.Join(args, " ")
+}
+
+func prepareCommand(e CommandExecutor, cmd interface{}, args []string, flags map[string]interface{}) (interface{}, error) {
   switch cmd.(type) {
   case string:
     s := cmd.(string)
-    params, err := gocast.ToStringMap(e.Cmds(), "")
+    params, err := gocast.ToStringMap(e.Cmds(), "", false)
     if nil != err {
       log.Panic(err)
       return "", nil
@@ -158,6 +167,7 @@ func prepareCommand(e CommandExecutor, cmd interface{}, flags map[string]interfa
 
     params = make(map[string]string)
     params["flags"] = prapareFlags(flags)
+    params["args"] = prapareArgs(args)
     params["solutionpath"] = getSolutionPath(e)
     params["fullpath"] = getFullPath(e)
     params["path"] = getPath(e)
@@ -253,7 +263,7 @@ func runObserver(e CommandExecutor, command, path string) error {
 /// Actions
 ///////////////////////////////////////////////////////////////////////////////
 
-func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observe bool) error {
+func execute(e CommandExecutor, cmd string, args []string, flags map[string]interface{}, observe bool) error {
   command := getCmd(e, cmd)
   path := getFullPath(e)
 
@@ -263,7 +273,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
     case string:
       // Prepare command
       var err error
-      if command, err = prepareCommand(e, command, flags); nil != err {
+      if command, err = prepareCommand(e, command, args, flags); nil != err {
         return err
       }
       if observe {
@@ -275,7 +285,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
       var cmd interface{}
       for _, c := range command.([]interface{}) {
         // Prepare command
-        if cmd, err = prepareCommand(e, c, flags); nil != err {
+        if cmd, err = prepareCommand(e, c, args, flags); nil != err {
           return err
         }
 
@@ -293,7 +303,7 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
       var cmd interface{}
       for _, c := range command.([]string) {
         // Prepare command
-        if cmd, err = prepareCommand(e, c, flags); nil != err {
+        if cmd, err = prepareCommand(e, c, args, flags); nil != err {
           return err
         }
 
@@ -312,6 +322,11 @@ func execute(e CommandExecutor, cmd string, flags map[string]interface{}, observ
   return nil // errors.New(fmt.Sprintf("Unsupport command: %s", cmd))
 }
 
+// Get command
+//
+// @param executer
+// @param cmd
+// @return Prepared Command
 func getCmd(e CommandExecutor, cmd string) interface{} {
   switch cmd {
   case "get":

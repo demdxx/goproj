@@ -1,8 +1,10 @@
+//
 // @project goproj
 // @copyright Dmitry Ponomarev <demdxx@gmail.com> 2014
 //
 // This work is licensed under the Creative Commons Attribution 4.0 International License.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.
+//
 
 package goproj
 
@@ -17,11 +19,11 @@ type goProc struct {
 }
 
 func (g *goProc) init() {
-  g.Path = "go" // TODO detect `go` path
+  g.Path = "go"
 }
 
 func (g goProc) run(args ...string) error {
-  fmt.Println(">", g.Path, args)
+  fmt.Println(args)
   cmd := exec.Command(g.Path, args...)
   cmd.Stdout = os.Stdout
   cmd.Stderr = os.Stderr

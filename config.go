@@ -65,7 +65,7 @@ func ConfigConvert(data interface{}) Config {
     return conf
   case map[interface{}]interface{}:
     conf := make(Config)
-    data, _ = gocast.ToSiMap(data, "")
+    data, _ = gocast.ToSiMap(data, "", false)
     if nil != data {
       for k, v := range data.(map[string]interface{}) {
         conf[k] = v
