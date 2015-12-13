@@ -80,6 +80,11 @@ goproj run [flags] [project name]
 goproj run [-observer] [project name]
 ```
 
+TODO
+====
+
+ * Add command `goproj init solution`
+
 License
 =======
 
