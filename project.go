@@ -34,7 +34,6 @@ func ProjectFromUrl(args ...string) *Project {
       if nil != err {
         return nil
       }
-      p.Path = p.Path
     }
   } else {
     p.Path = args[0]
@@ -47,30 +46,46 @@ func ProjectFromUrl(args ...string) *Project {
 func ProjectFromFile(solpath, projpath string, conf Config) (proj *Project, err error) {
   name := projpath
   projConf := Config{"project": name}
-  if err = projConf.InitFromFile(ProjectFileFullPathFor(solpath, projpath)); nil != err {
-    return
-  }
 
-  // Preinit project
-  proj = &Project{
-    Dependency: Dependency{
-      Name:   name,
-      Path:   projpath,
-      Config: projConf,
-    },
-  }
+  if err = projConf.InitFromFile(ProjectFileFullPathFor(solpath, projpath)); nil == err {
 
-  // Merge local and global config
-  proj.Config.Update(conf, false)
-  if _, ok := proj.Config["version"]; !ok {
-    proj.Config["version"] = "0"
-  }
+    // Preinit project
+    proj = &Project{
+      Dependency: Dependency{
+        Name:   name,
+        Path:   projpath,
+        Url:    projConf.GetString("url", ""),
+        Config: projConf,
+      },
+    }
 
-  if url, ok := proj.Config["url"]; ok {
-    proj.Dependency.Url = gocast.ToString(url)
-  }
+    // Merge local and global config
+    proj.Config.Update(conf, false)
+    if _, ok := proj.Config["version"]; !ok {
+      proj.Config["version"] = "0"
+    }
 
-  err = proj.Init()
+    if url, ok := proj.Config["url"]; ok {
+      proj.Dependency.Url = gocast.ToString(url)
+    }
+
+    err = proj.Init()
+
+  } else {
+
+    // Init Dummy project
+    err = nil
+    projConf.Update(conf, false)
+    proj = &Project{
+      Dependency: Dependency{
+        Name:   name,
+        Path:   projpath,
+        Url:    projConf.GetString("url", ""),
+        Config: projConf,
+      },
+    }
+
+  }
   return
 }
 
@@ -137,17 +152,17 @@ func (proj *Project) InitFileStruct(solpath string) error {
   }
 
   if len(proj.Url) > 0 {
+
     // Load project from URL
     _, cmd, url := PrepareCVSUrl(proj.Url)
-    var err error
-    var command interface{}
-
-    if command, err = prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil, nil); nil != err {
-      return err
-    }
-
-    if err := run(proj, command.(string)); nil != err {
-      return err
+    if modulePath := getFullPath(proj); !isFsExists(modulePath) || isDirEmpty(modulePath) {
+      if command, err := prepareCommand(proj, strings.Replace(cmd, "{url}", url, -1), nil, nil); nil != err {
+        return err
+      } else if err = run(proj, command.(string)); nil != err {
+        return err
+      }
+    } else {
+      fmt.Println("Module directory not empty:", modulePath)
     }
     return proj.Init()
   }

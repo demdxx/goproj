@@ -20,9 +20,9 @@ import (
   "github.com/demdxx/goproj"
 )
 
-const version = "2.1.0beta"
+const version = "2.1.2beta"
 const author = "Dmitry Ponomarev <demdxx@gmail.com>"
-const year = "2014"
+const year = "2014-2015"
 
 var (
   flagObserver bool = false

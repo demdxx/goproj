@@ -145,6 +145,7 @@ func (sol *Solution) Init(path string) (err error) {
 // src/
 // .gosolution
 func (sol *Solution) InitFileStruct(projects ...string) error {
+
   if len(sol.Path) < 1 {
     return ErrorSolutionPath
   }
@@ -309,11 +310,17 @@ func (sol *Solution) InitProjects() error {
 }
 
 func (sol *Solution) AddProject(p *Project) error {
-  if nil == sol.Projects {
-    sol.Projects = make([]*Project, 0)
+  if p.IsValid() {
+    if nil != sol.Projects {
+      for _, pp := range sol.Projects {
+        if pp.Path == p.Path {
+          return nil
+        }
+      }
+    }
+    p.Owner = sol
+    sol.Projects = append(sol.Projects, p)
   }
-  p.Owner = sol
-  sol.Projects = append(sol.Projects, p)
   return nil
 }
 

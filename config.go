@@ -55,6 +55,17 @@ func (conf Config) Save(fpath string) error {
   return ioutil.WriteFile(fpath, data, 0644)
 }
 
+func (conf Config) GetString(key, def string) string {
+  if v, ok := conf[key]; ok && nil != v {
+    return gocast.ToString(v)
+  }
+  return def
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// Helpers
+///////////////////////////////////////////////////////////////////////////////
+
 func ConfigConvert(data interface{}) Config {
   switch data.(type) {
   case map[string]interface{}:

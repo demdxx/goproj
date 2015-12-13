@@ -8,7 +8,9 @@ package goproj
 
 import (
   "errors"
+  "io"
   "net/url"
+  "os"
   "reflect"
   "strings"
 )
@@ -103,3 +105,27 @@ func PathFromUrl(_url string) (string, error) {
 //   }
 //   return nil
 // }
+
+// exists returns whether the given file or directory exists or not
+//
+// @param path
+// @return bool
+func isFsExists(path string) bool {
+  _, err := os.Stat(path)
+  if err == nil {
+    return true
+  }
+  return !os.IsNotExist(err)
+}
+
+// Check is directory is empty
+func isDirEmpty(dirname string) bool {
+  f, err := os.Open(dirname)
+  if err != nil {
+    return false
+  }
+  defer f.Close()
+
+  _, err = f.Readdir(1)
+  return err == io.EOF
+}
