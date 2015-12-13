@@ -7,14 +7,14 @@ Golang helps organize and manage projects in the language GO, provides a descrip
 NOTE: Small experementall revision for simple projects
 
     @autor Dmitry Ponomarev <demdxx@gmail.com> 2013 – 2015
-    @version 2.1.1
+    @version 2.1.2
     @licese CC-BY-4,0
 
 Install
 =======
 
 ```sh
-go get github.com/demdxx/goproj && go install
+go get -u github.com/demdxx/goproj/cmd/goproj
 ```
 
 Commands
@@ -26,8 +26,7 @@ Commands
 goproj help
 ```
 
-Create new project
-------------------
+## Create new project
 
 ```sh
 cd {solution-folder}
@@ -37,30 +36,48 @@ goproj init {project-name}
 goproj init git:http://github.com/Undefined/project [project-name]
 ```
 
-Download and install packages and dependencies
-----------------------------------------------
+## **.goproj** file
 
-```sh
-goproj get
+```yaml
+name: project
+version: 0.0.1
+description: Look in the README.md
+
+# Dependencies
+deps:
+  - github.com/go-martini/martini
+  - github.com/martini-contrib/sessions
+  - github.com/martini-contrib/oauth2
+  - github.com/gopk/config
+  - github.com/gopk/templates
+
+# Custom commands
+cmd:
+  static: "cd '{fullpath}' && gulp build"
+  run: "{go} run '{fullpath}/cmd/control/main.go' -basedir '{fullpath}' --debug"
 ```
 
-Compile packages and dependencies
----------------------------------
+## Download and install packages and dependencies
 
 ```sh
-goproj build [flags]
+goproj get [-u] [project name]
 ```
 
-Compile and run Go program
---------------------------
+## Compile packages and dependencies
 
 ```sh
-goproj run [project names] [flags]
+goproj build [flags] [project name]
+```
+
+## Compile and run Go program
+
+```sh
+goproj run [flags] [project name]
 
 # OR run in auto restart mode
 # Daemon to observe for a files in your project and automatically restart current command
 
-goproj run [project names] -observer
+goproj run [-observer] [project name]
 ```
 
 License

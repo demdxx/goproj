@@ -68,6 +68,12 @@ func main() {
   os.Args = os.Args[1:]
   os.Args[0] = arg1
 
+  if len(os.Args) > 1 && "-observer" == os.Args[1] {
+    arg := os.Args[0]
+    os.Args = os.Args[1:]
+    os.Args[0] = arg
+  }
+
   flag.Parse()
   pwd, err := os.Getwd()
   if nil != err {

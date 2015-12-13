@@ -249,6 +249,10 @@ func (sol *Solution) CmdExec(cmd string, args []string, flags map[string]interfa
         if err := p.CmdExec(cmd, args2, flags, observe); nil != err {
           return err
         }
+
+        if len(args) > 0 {
+          break
+        }
       }
     }
 
