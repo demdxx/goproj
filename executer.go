@@ -196,7 +196,7 @@ func run(e CommandExecutor, command string) error {
 
 func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
   e.UpdateEnv()
-  fmt.Println(">", command)
+  fmt.Println(">", "\033[0;32m"+command+"\033[0m")
   cmd := exec.Command("sh", "-c", command)
   cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
   cmd.Stdout = os.Stdout

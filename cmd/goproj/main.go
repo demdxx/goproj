@@ -80,9 +80,11 @@ func main() {
     pwd = filepath.Dir(arg1)
   }
 
+  args := os.Args[1:]
+
   switch cmd {
   case "init":
-    cmdInitSolution(pwd, os.Args)
+    cmdInitSolution(pwd, args)
     break
   case "deps":
     cmdDepList(pwd)
@@ -91,9 +93,8 @@ func main() {
     cmdProjList(pwd)
     break
   case "go":
-    args := os.Args[1:]
     if len(args) > 0 {
-      goproj.GoRun(os.Args[1:]...)
+      goproj.GoRun(args...)
     } else {
       fmt.Print(goproj.GoPath())
     }
@@ -114,7 +115,7 @@ func main() {
     printHelp()
     break
   default:
-    cmdExec(pwd, cmd, os.Args[1:])
+    cmdExec(pwd, cmd, args)
   }
 }
 
@@ -135,8 +136,6 @@ func cmdInitSolution(pwd string, args []string) {
   if nil != err {
     log.Fatal(err)
   }
-
-  fmt.Println("sol.IsGlobal", sol, sol.IsGlobal)
 
   if sol.IsGlobal {
     log.Fatal(errors.New("You can`t init project for global solution"))
