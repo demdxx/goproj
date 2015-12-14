@@ -25,4 +25,4 @@ goproj test -v
 goproj build --taget=production gopm
 
 # Check project config -i print info
-goproj project check -i example.goproj
+goproj project check -i example.goproj.yml
