@@ -23,3 +23,6 @@ goproj test -v
 
 # Build project gopm
 goproj build --taget=production gopm
+
+# Check project config -i print info
+goproj project check -i example.goproj

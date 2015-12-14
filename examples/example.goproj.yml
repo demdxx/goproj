@@ -1,0 +1,40 @@
+name: Example
+version: 0.0.1beta
+description: <
+  This is the test project file
+author: Dmitry Ponomarev <demdxx@gmail.com>
+
+target:
+  - # name: main
+    # Defaults
+
+    deps:
+      - "github.com/demdxx/gocast#1df092f41c51504e3c96aca156185faf41e18023"
+      - "https://github.com/GPMGo/gopm#c855bb10ada00278fbcc494467e573faf2bd9f70"
+
+    # Environment
+    env:
+      include: example.env.yml
+
+    vars:
+      main: main.go # Main var default main.go
+
+  # Default production target
+  - name: production
+
+    # Environment
+    env:
+      os: linux
+
+    ldflags: <
+      -X main.version {{ .cvs.tag.last.name }}.{{ .date | date_format: "YYYY.MM.dd" }}
+
+    cmds: # Commands
+      build: "{{ go }} build {{ main }}"
+
+  # Default test target
+  - name: test
+
+    deps:
+      - "github.com/onsi/ginkgo/ginkgo#!master"
+      - github.com/onsi/gomega
