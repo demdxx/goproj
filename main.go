@@ -35,9 +35,10 @@ var (
 )
 
 func main() {
+  command := kingpin.MustParse(app.Parse(os.Args[1:]))
   sol := modules.GetSolution()
 
-  switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+  switch command {
   case cmdEnv.FullCommand():
     cmd.EnvPrint(sol)
     break
