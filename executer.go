@@ -188,10 +188,20 @@ func prepareCommand(e CommandExecutor, cmd interface{}, args []string, flags map
 
 func run(e CommandExecutor, command string) error {
   cmd, err := runCommand(e, command)
-  if nil != err {
-    return err
+  if nil == err {
+    // capture ctrl+c and stop CPU profiler
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, os.Interrupt)
+    go func() {
+      for _ = range c {
+        killCmd(cmd)
+        pprof.StopCPUProfile()
+        os.Exit(1)
+      }
+    }()
+    return cmd.Wait()
   }
-  return cmd.Wait()
+  return err
 }
 
 func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
@@ -209,21 +219,24 @@ func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
 }
 
 func killCmd(cmd *exec.Cmd) {
+  fmt.Println("Kill Proc", cmd)
+
   if nil != cmd {
+    var err error
     pid := cmd.Process.Pid
-    if err := syscall.Kill(pid, syscall.SIGTERM); nil != err {
-      log.Println("Failed to kill: ", err)
+    if err = syscall.Kill(pid, syscall.SIGTERM); nil != err {
+      log.Println("Failed to kill:", err)
     }
 
     gpid, _ := syscall.Getpgid(pid)
     if err := syscall.Kill(-gpid, 15); nil != err {
-      log.Println("Failed to kill process group: ", gpid, err)
+      log.Println("Failed to kill process group:", gpid, err)
     }
 
-    if err := cmd.Process.Signal(os.Kill); nil != err {
-      log.Println("Failed to kill: ", err)
-    } else {
-      cmd.Process.Wait()
+    if err = cmd.Process.Signal(os.Kill); nil != err {
+      log.Println("Failed to kill:", err)
+    } else if _, err = cmd.Process.Wait(); nil != err {
+      log.Println("Failed process wait:", err)
     }
     cmd = nil
   }
