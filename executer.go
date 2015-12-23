@@ -218,8 +218,6 @@ func runCommand(e CommandExecutor, command string) (*exec.Cmd, error) {
 }
 
 func killCmd(cmd *exec.Cmd) {
-  fmt.Println("Kill Proc", cmd)
-
   if nil != cmd {
     var err error
     pid := cmd.Process.Pid
