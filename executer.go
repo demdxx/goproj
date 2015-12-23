@@ -17,7 +17,6 @@ import (
   "os/exec"
   "os/signal"
   "path/filepath"
-  "runtime/pprof"
   "strconv"
   "strings"
   "syscall"
@@ -195,8 +194,8 @@ func run(e CommandExecutor, command string) error {
     go func() {
       for _ = range c {
         killCmd(cmd)
-        pprof.StopCPUProfile()
-        os.Exit(1)
+        os.Exit(0)
+        break
       }
     }()
     return cmd.Wait()
@@ -251,8 +250,8 @@ func runObserver(e CommandExecutor, command, path string) error {
     go func() {
       for _ = range c {
         killCmd(cmd)
-        pprof.StopCPUProfile()
-        os.Exit(1)
+        os.Exit(0)
+        break
       }
     }()
 
